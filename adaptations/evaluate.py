@@ -28,14 +28,14 @@ SOURCE_NAME = 'CS'
 TARGET_NAME = 'DensePASS'
 MODEL = 'Trans4PASS_v1'
 DIR_NAME = '{}2{}_{}_MPA/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
-DATA_DIRECTORY = 'datasets/DensePASS'
+DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = 'dataset/densepass_list/val.txt'
 INPUT_SIZE_TARGET = '2048,400'
 SAVE_PATH = './result/' + DIR_NAME
 
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
-RESTORE_FROM = 'snapshots/CS2DensePASS_Trans4PASS_v1_MPA/BestCS2DensePASS_G.pth'
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS2DensePASS_Trans4PASS_v1_MPA/BestCS2DensePASS_G.pth'
 SET = 'val'
 
 EMB_CHANS = 128

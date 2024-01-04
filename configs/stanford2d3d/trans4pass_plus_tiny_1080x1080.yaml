@@ -9,11 +9,11 @@ TRAIN:
     CROP_SIZE: (1080,1080)
     BASE_SIZE: 1080
     BACKBONE_PRETRAINED_PATH: "pretrained/mit_b1.pth"
-    MODEL_SAVE_DIR: 'workdirs/stanford2d3d/trans4pass_plus_tiny_1080x1080/'
+    MODEL_SAVE_DIR: '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/stanford2d3d/trans4pass_plus_tiny_1080x1080/'
     APEX: False
 TEST:
     BATCH_SIZE: 1
-    TEST_MODEL_PATH: "workdirs/stanford2d3d/trans4pass_plus_tiny_1080x1080/trans4pass_plus_tiny_1080x1080.pth"
+    TEST_MODEL_PATH: "/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/stanford2d3d/trans4pass_plus_tiny_1080x1080/trans4pass_plus_tiny_1080x1080.pth"
     CROP_SIZE: (1080,1080)
 
 SOLVER:

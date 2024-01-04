@@ -15,7 +15,7 @@ class DensePASSSegmentation(SegmentationDataset):
     """DensePASS Semantic Segmentation Dataset."""
     NUM_CLASS = 19
 
-    def __init__(self, root='datasets/DensePASS', split='val', mode=None, transform=None, **kwargs):
+    def __init__(self, root='/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS', split='val', mode=None, transform=None, **kwargs):
         super(DensePASSSegmentation, self).__init__(root, split, mode, transform, **kwargs)
         assert os.path.exists(self.root), "Please put dataset in {SEG_ROOT}/datasets/DensePASS"
         self.images, self.mask_paths = _get_city_pairs(self.root, self.split)
@@ -99,7 +99,7 @@ def _get_city_pairs(folder, split='train'):
                     imgpath = os.path.join(root, filename)
                     foldername = os.path.basename(os.path.dirname(imgpath))
                     # maskname = filename.replace('_.png', '_labelTrainIds.png')
-                    maskname = filename.replace('.png', '_labelTrainIds.png')
+                    maskname = filename.replace('_.png', '_labelTrainIds.png')
                     maskpath = os.path.join(mask_folder, foldername, maskname)
                     if os.path.isfile(imgpath) and os.path.isfile(maskpath):
                         img_paths.append(imgpath)

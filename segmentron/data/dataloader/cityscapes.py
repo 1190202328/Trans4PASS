@@ -12,7 +12,7 @@ class CitySegmentation(SegmentationDataset):
     """Cityscapes Semantic Segmentation Dataset."""
     NUM_CLASS = 19
 
-    def __init__(self, root='datasets/cityscapes', split='train', mode=None, transform=None, **kwargs):
+    def __init__(self, root='/nfs/s3_common_dataset/cityscapes', split='train', mode=None, transform=None, **kwargs):
         super(CitySegmentation, self).__init__(root, split, mode, transform, **kwargs)
         assert os.path.exists(self.root), "Please put dataset in {SEG_ROOT}/datasets/cityscapes"
         self.images, self.mask_paths = _get_city_pairs(self.root, self.split)

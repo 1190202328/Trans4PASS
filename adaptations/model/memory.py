@@ -161,13 +161,13 @@ if __name__ == '__main__':
     trainloader = data.DataLoader(trainset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
 
     INPUT_SIZE_TARGET_TEST = '2048,400'
-    data_dir_trg = 'datasets/DensePASS'
+    data_dir_trg = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
     data_list_trg = 'dataset/densepass_list/train.txt'
     SSL_DIR = './pseudo_DensePASS_Trans4PASS_v1_ms'
     targettestset = densepassDataSet(data_dir_trg, data_list_trg, crop_size=(2048, 400), set='train', ssl_dir=SSL_DIR)
     testloader = data.DataLoader(targettestset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
     # --- warm up model
-    RESTORE_FROM = 'snapshots/CS2DensePASS_Trans4PASS_v1_WarmUp/BestCS2DensePASS_G.pth'
+    RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS2DensePASS_Trans4PASS_v1_WarmUp/BestCS2DensePASS_G.pth'
 
     model = Trans4PASS_v1(num_classes=19, emb_chans=128)
     saved_state_dict = torch.load(RESTORE_FROM, map_location=lambda storage, loc: storage)

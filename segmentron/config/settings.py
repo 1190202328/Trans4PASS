@@ -58,7 +58,7 @@ cfg.TRAIN.CROP_SIZE = 769
 # train base size
 cfg.TRAIN.BASE_SIZE = 1024
 # model output dir
-cfg.TRAIN.MODEL_SAVE_DIR = 'workdirs/'
+cfg.TRAIN.MODEL_SAVE_DIR = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/'
 # log dir
 cfg.TRAIN.LOG_SAVE_DIR = cfg.TRAIN.MODEL_SAVE_DIR
 # pretrained model for eval or finetune

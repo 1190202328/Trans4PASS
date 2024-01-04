@@ -20,14 +20,14 @@ IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
 
 TARGET_NAME = 'DensePASS'
-DATA_DIRECTORY = './datasets/DensePASS'
+DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = './dataset/densepass_list/train.txt'
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
 BATCH_SIZE = 1
 NUM_WORKERS = 0
 MODEL = 'Trans4PASS_v1'
-RESTORE_FROM = 'snapshots/CS2DensePASS_Trans4PASS_v1_WarmUp/BestCS2DensePASS_G.pth'
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS2DensePASS_Trans4PASS_v1_WarmUp/BestCS2DensePASS_G.pth'
 SET = 'train'
 SAVE_PATH = './pseudo_{}_{}_ms'.format(TARGET_NAME, MODEL)
 
