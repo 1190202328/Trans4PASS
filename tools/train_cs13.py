@@ -196,8 +196,8 @@ class Trainer(object):
                         str(datetime.timedelta(seconds=int(time.time() - start_time))),
                         eta_string))
 
-            # if iteration % self.iters_per_epoch == 0 and self.save_to_disk:
-            #     save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=False)
+            if iteration % self.iters_per_epoch == 0 and self.save_to_disk:
+                save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=False)
 
             if not self.args.skip_val and iteration % val_per_iters == 0:
                 # self.validation(epoch)
@@ -207,12 +207,10 @@ class Trainer(object):
 
                 if self.cur_test_mIoU > self.best_test_mIoU:
                     self.best_test_mIoU = self.cur_test_mIoU
-                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True,
-                                    miou=self.best_test_mIoU, miou2=self.cur_test_2_mIoU)
+                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True, best_save_name='best_cs13_model.pth')
                 if self.cur_test_2_mIoU > self.best_test_2_mIoU:
                     self.best_test_2_mIoU = self.cur_test_2_mIoU
-                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True,
-                                    miou=self.cur_test_mIoU, miou2=self.best_test_2_mIoU, is_target=True)
+                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True, best_save_name='best_dp13_model.pth')
 
                 self.model.train()
 

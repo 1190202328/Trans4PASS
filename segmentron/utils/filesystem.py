@@ -11,7 +11,7 @@ import torch
 from ..config import cfg
 
 
-def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_best=False):
+def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_best=False, best_save_name='best_model.pth'):
     """Save Checkpoint"""
     directory = os.path.expanduser(cfg.TRAIN.MODEL_SAVE_DIR)
     if not os.path.exists(directory):
@@ -19,11 +19,11 @@ def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_be
     model_state_dict = model.module.state_dict() if hasattr(model, 'module') else model.state_dict()
     filename = '{}_epoch_{}.pth'.format(cfg.TIME_STAMP, str(epoch))
     if is_best:
-        best_filename = f'{cfg.TIME_STAMP}_best_model.pth'
+        best_filename = f'{cfg.TIME_STAMP}_{best_save_name}'
         best_filename = os.path.join(directory, best_filename)
         torch.save(model_state_dict, best_filename)
     else:
-        pre_filename = glob.glob('{}/{}*.pth'.format(directory, cfg.TIME_STAMP))
+        pre_filename = glob.glob('{}/{}_epoch*.pth'.format(directory, cfg.TIME_STAMP))
         try:
             for p in pre_filename:
                 os.remove(p)
