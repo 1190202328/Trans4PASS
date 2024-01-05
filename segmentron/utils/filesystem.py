@@ -1,11 +1,15 @@
 """Filesystem utility functions."""
 from __future__ import absolute_import
-import os, glob
+
 import errno
-import torch
+import glob
 import logging
+import os
+
+import torch
 
 from ..config import cfg
+
 
 def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_best=False):
     """Save Checkpoint"""
@@ -15,11 +19,11 @@ def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_be
     model_state_dict = model.module.state_dict() if hasattr(model, 'module') else model.state_dict()
     filename = '{}_epoch_{}.pth'.format(cfg.TIME_STAMP, str(epoch))
     if is_best:
-        best_filename = 'best_model.pth'
+        best_filename = f'{cfg.TIME_STAMP}_best_model.pth'
         best_filename = os.path.join(directory, best_filename)
         torch.save(model_state_dict, best_filename)
     else:
-        pre_filename = glob.glob('{}*.pth'.format(cfg.TIME_STAMP))
+        pre_filename = glob.glob('{}/{}*.pth'.format(directory, cfg.TIME_STAMP))
         try:
             for p in pre_filename:
                 os.remove(p)
@@ -38,6 +42,7 @@ def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_be
             torch.save(save_state, filename)
             # logging.info('Epoch {} model saved in: {}'.format(epoch, filename))
 
+
 def makedirs(path):
     """Create directory recursively if not exists.
     Similar to `makedir -p`, you can skip checking existence before this function.
@@ -51,4 +56,3 @@ def makedirs(path):
     except OSError as exc:
         if exc.errno != errno.EEXIST:
             raise
-

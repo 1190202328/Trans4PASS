@@ -1,8 +1,9 @@
 import argparse
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Segmentron')
-    parser.add_argument('--config-file' ,metavar="FILE",
+    parser.add_argument('--config-file', metavar="FILE",
                         default='configs/stanford2d3d/trans4pass_small_1080x1080.yaml',
                         help='config file path')
     # cuda setting
