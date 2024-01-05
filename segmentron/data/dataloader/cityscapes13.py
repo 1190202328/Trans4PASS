@@ -20,14 +20,20 @@ class City13Segmentation(SegmentationDataset):
         assert (len(self.images) == len(self.mask_paths))
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
-        self._key = np.array([0,1,2,3,4,5,6,7,8,9,10,11,11,12,12,12,-1,12,12])
+        # self._key = np.array([0,1,2,3,4,5,6,7,8,9,10,11,11,12,12,12,-1,12,12])
+        self._key = np.array([-1, -1, -1, -1, -1,
+                             -1, -1, 0, 1, -1, -1,
+                             2, 3, 4, -1, -1, -1,
+                             5, -1, 6, 7, 8, 9,
+                             10, 11, 11, 12, 12, 12,
+                             -1, -1, -1, 12, 12])
 
     def _map19to13(self, mask):
         values = np.unique(mask)
         new_mask = np.zeros_like(mask)
         new_mask -= 1
         for value in values:
-            if value == 255: 
+            if value == 255 or value == -1:
                 new_mask[mask==value] = -1
             else:
                 new_mask[mask==value] = self._key[value]
@@ -85,7 +91,7 @@ def _get_city_pairs(folder, split='train'):
                 if filename.endswith('.png'):
                     imgpath = os.path.join(root, filename)
                     foldername = os.path.basename(os.path.dirname(imgpath))
-                    maskname = filename.replace('leftImg8bit', 'gtFine_labelTrainIds')
+                    maskname = filename.replace('leftImg8bit', 'gtFine_labelIds')
                     maskpath = os.path.join(mask_folder, foldername, maskname)
                     if os.path.isfile(imgpath) and os.path.isfile(maskpath):
                         img_paths.append(imgpath)
@@ -106,7 +112,6 @@ def _get_city_pairs(folder, split='train'):
         val_img_folder = os.path.join(folder, 'leftImg8bit/val')
         val_mask_folder = os.path.join(folder, 'gtFine/val')
         img_paths, mask_paths = get_path_pairs(val_img_folder, val_mask_folder)
-      
     return img_paths, mask_paths
 
 

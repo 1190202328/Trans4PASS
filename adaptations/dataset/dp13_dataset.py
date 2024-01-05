@@ -64,7 +64,7 @@ class densepass13DataSet(data.Dataset):
         image = input_transform(image)
 
         if len(self.ssl_dir)>0:
-            label = Image.open(osp.join(self.ssl_dir, name.replace('.png', '_labelTrainIds.png')))
+            label = Image.open(osp.join(self.ssl_dir, name.replace('_.png', '_labelTrainIds.png')))
             if self.trans == 'resize':
                 # resize
                 label = label.resize(self.crop_size, Image.NEAREST)
@@ -96,7 +96,7 @@ class densepass13TestDataSet(data.Dataset):
 
         for name in self.img_ids:
             img_file = osp.join(self.root, "leftImg8bit/%s/%s" % (self.set, name))
-            lbname = name.replace(".png", "_labelTrainIds.png")
+            lbname = name.replace('_.png', '_labelTrainIds.png')
             label_file = osp.join(self.root, "gtFine/%s/%s" % (self.set, lbname))
             self.files.append({
                 "img": img_file,

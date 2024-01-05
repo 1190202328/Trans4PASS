@@ -64,7 +64,7 @@ class densepassDataSet(data.Dataset):
         image = input_transform(image)
 
         if len(self.ssl_dir)>0:
-            label = Image.open(osp.join(self.ssl_dir, name.replace('.png', '_labelTrainIds.png')))
+            label = Image.open(osp.join(self.ssl_dir, name.replace('_.png', '_labelTrainIds.png')))
             if self.trans == 'resize':
                 # resize
                 label = label.resize(self.crop_size, Image.NEAREST)

@@ -149,7 +149,7 @@ def main():
             label[(prob<thres[i])*(label==i)] = 255  
         output = np.asarray(label, dtype=np.uint8)
         output = Image.fromarray(output)
-        name = name.replace('.png', '_labelTrainIds.png')
+        name = name.replace('_.png', '_labelTrainIds.png')
         save_fn = os.path.join(args.save, name)
         if not os.path.exists(os.path.dirname(save_fn)):
             os.makedirs(os.path.dirname(save_fn), exist_ok=True)

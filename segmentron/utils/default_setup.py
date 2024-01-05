@@ -25,7 +25,6 @@ def default_setup(args):
         torch.distributed.init_process_group(backend="nccl", init_method="env://")
         synchronize()
 
-    # TODO
     # if args.save_pred:
     #     outdir = '../runs/pred_pic/{}_{}_{}'.format(args.model, args.backbone, args.dataset)
     #     if not os.path.exists(outdir):

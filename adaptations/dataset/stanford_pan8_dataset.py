@@ -70,7 +70,7 @@ class StanfordPan8DataSet(data.Dataset):
         image = input_transform(image)
 
         if len(self.ssl_dir) > 0:
-            label = Image.open(osp.join(self.ssl_dir, name.replace('.png', '_labelTrainIds.png')))
+            label = Image.open(osp.join(self.ssl_dir, name.replace('_.png', '_labelTrainIds.png')))
             # label = Image.open(osp.join(self.ssl_dir, name))
             label = label.crop((left, top, right, bottom))
             label = label.resize((width,height), Image.NEAREST)
