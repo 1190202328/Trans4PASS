@@ -4,7 +4,11 @@ DIR=.
 
 #bash /nfs/volume-902-16/tangwenbo/ofs-1.sh
 
-# eval single_source
+# eval oracle
+cd /nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS && CUDA_VISIBLE_DEVICES=0 /home/luban/apps/miniconda/miniconda/envs/torch1101/bin/python \
+  tools/train_cs.py --test --config-file configs/cityscapes/trans4pass_tiny_512x512.yaml
+
+# eval source only single source
 cd /nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS && CUDA_VISIBLE_DEVICES=0 /home/luban/apps/miniconda/miniconda/envs/torch1101/bin/python \
   tools/eval_dp.py --config-file configs/cityscapes/trans4pass_tiny_512x512.yaml
 
