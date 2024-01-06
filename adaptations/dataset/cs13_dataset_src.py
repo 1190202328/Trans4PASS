@@ -25,14 +25,21 @@ class CS13SrcDataSet(data.Dataset):
 
         for name in self.img_ids:
             img_file = osp.join(self.root, "leftImg8bit/%s/%s" % (self.set, name))
-            lbname = name.replace("leftImg8bit", "gtFine_labelTrainIds")
+            lbname = name.replace("leftImg8bit", "gtFine_labelIds")
             label_file = osp.join(self.root, "gtFine/%s/%s" % (self.set, lbname))
             self.files.append({
                 "img": img_file,
                 "label": label_file,
                 "name": name
             })
-        self._key = np.array([0,1,2,3,4,5,6,7,8,9,10,11,11,12,12,12,255,12,12])
+        # self._key = np.array([0,1,2,3,4,5,6,7,8,9,10,11,11,12,12,12,255,12,12])
+
+        self._key = np.array([255, 255, 255, 255, 255,
+                             255, 255, 0, 1, 255, 255,
+                             2, 3, 4, 255, 255, 255,
+                             5, 255, 6, 7, 8, 9,
+                             10, 11, 11, 12, 12, 12,
+                             255, 255, 255, 12, 12])
 
     def __len__(self):
         return len(self.files)

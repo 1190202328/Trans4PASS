@@ -182,7 +182,8 @@ def setup_logger(name, save_dir, filename="log.txt", mode='w'):
     ch.setFormatter(formatter)
     logging.root.addHandler(ch)
 
-setup_logger('Trans4PASS', SNAPSHOT_DIR)
+TIME_STAMP = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
+setup_logger('Trans4PASS', SNAPSHOT_DIR, filename=f'{TIME_STAMP}_log.txt')
 
 def lr_poly(base_lr, iter, max_iter, power):
     return base_lr * ((1 - float(iter) / max_iter) ** (power))
@@ -290,9 +291,6 @@ def main():
 
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
-    else:
-        script = os.path.abspath(__file__)
-        shutil.copy(script, args.snapshot_dir)
 
     # init data loader
     trainset = CS13SrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
@@ -440,8 +438,8 @@ def main():
 
         if i_iter >= args.num_steps_stop - 1:
             logging.info('save model ...')
-            torch.save(model.state_dict(), osp.join(args.snapshot_dir, 'CS_' + str(args.num_steps_stop) + '.pth'))
-            torch.save(model_D.state_dict(), osp.join(args.snapshot_dir, 'CS_' + str(args.num_steps_stop) + '_D.pth'))
+            torch.save(model.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '.pth'))
+            torch.save(model_D.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '_D.pth'))
             break
 
         if i_iter % args.save_pred_every == 0 and i_iter != 0:
@@ -467,16 +465,16 @@ def main():
             logging.info('===> mIoU: ' + str(mIoU))
             if mIoU > bestIoU:
                 bestIoU = mIoU
-                pre_filename = osp.join(args.snapshot_dir, 'Best*.pth')
+                pre_filename = osp.join(args.snapshot_dir, TIME_STAMP+'_Best*.pth')
                 pre_filename = glob.glob(pre_filename)
                 try:
                     for p in pre_filename:
                         os.remove(p)
                 except OSError as e:
                     logging.info(e)
-                torch.save(model.state_dict(), osp.join(args.snapshot_dir, 'Best{}2{}_{}iter_{}miou.pth'.format(
+                torch.save(model.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP+'_Best{}2{}_{}iter_{}miou.pth'.format(
                     SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
-                torch.save(model_D.state_dict(), osp.join(args.snapshot_dir, 'Best{}2{}_{}iter_D_{}miou.pth'.format(
+                torch.save(model_D.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP+'_Best{}2{}_{}iter_D_{}miou.pth'.format(
                     SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
             model.train()
 
