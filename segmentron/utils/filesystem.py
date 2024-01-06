@@ -21,7 +21,11 @@ def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_be
     if is_best:
         best_filename = f'{cfg.TIME_STAMP}_{best_save_name}'
         best_filename = os.path.join(directory, best_filename)
-        torch.save(model_state_dict, best_filename)
+        try:
+            torch.save(model_state_dict, best_filename)
+        except OSError:
+            print(f"save ckpt [{best_filename}] error!")
+            logging.error(f"save ckpt [{best_filename}] error!")
     else:
         pre_filename = glob.glob('{}/{}_epoch*.pth'.format(directory, cfg.TIME_STAMP))
         try:
@@ -39,8 +43,11 @@ def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_be
         }
         filename = os.path.join(directory, filename)
         if not args.distributed or (args.distributed and args.local_rank % args.num_gpus == 0):
-            torch.save(save_state, filename)
-            # logging.info('Epoch {} model saved in: {}'.format(epoch, filename))
+            try:
+                torch.save(save_state, filename)
+            except OSError:
+                print(f"save ckpt [{filename}] error!")
+                logging.error(f"save ckpt [{filename}] error!")
 
 
 def makedirs(path):
