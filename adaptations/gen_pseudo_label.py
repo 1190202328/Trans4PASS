@@ -9,6 +9,9 @@ from torch.autograd import Variable
 import torchvision.models as models
 import torch.nn.functional as F
 from torch.utils import data
+
+from adaptations.dataset.dp13_dataset import densepass13DataSet
+from adaptations.model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
 from model.trans4pass import Trans4PASS_v1, Trans4PASS_v2
 from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
 from collections import OrderedDict
@@ -18,16 +21,16 @@ from PIL import Image
 import torch.nn as nn
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
-
-TARGET_NAME = 'DensePASS'
+EMB_CHANS = 128
+TARGET_NAME = 'CS132DP13'
 DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = './dataset/densepass_list/train.txt'
 IGNORE_LABEL = 255
-NUM_CLASSES = 19
+NUM_CLASSES = 13
 BATCH_SIZE = 1
 NUM_WORKERS = 0
-MODEL = 'Trans4PASS_v1'
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS2DensePASS_Trans4PASS_v1_WarmUp/BestCS2DensePASS_G.pth'
+MODEL = 'Trans4PASS_plus_v2'
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS132DP13_Trans4PASS_plus_v2_WarmUp/2024-01-06-23-42_BestCS132DP13_2000iter_51.24miou.pth'
 SET = 'train'
 SAVE_PATH = './pseudo_{}_{}_ms'.format(TARGET_NAME, MODEL)
 
@@ -55,6 +58,8 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLab-ResNet Network")
     parser.add_argument("--model", type=str, default=MODEL,
                         help="Model Choice Deeplab.")
+    parser.add_argument("--emb-chans", type=int, default=EMB_CHANS,
+                        help="Number of channels in decoder head.")
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the Cityscapes dataset.")
     parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
@@ -81,10 +86,10 @@ def main():
     if not os.path.exists(args.save):
         os.makedirs(args.save)
 
-    if args.model == 'Trans4PASS_v1':
-        model = Trans4PASS_v1(num_classes=args.num_classes)
-    elif args.model == 'Trans4PASS_v2':
-        model = Trans4PASS_v2(num_classes=args.num_classes)
+    if args.model == 'Trans4PASS_plus_v1':
+        model = Trans4PASS_plus_v1(num_classes=args.num_classes, emb_chans=args.emb_chans)
+    elif args.model == 'Trans4PASS_plus_v2':
+        model = Trans4PASS_plus_v2(num_classes=args.num_classes, emb_chans=args.emb_chans)
     else:
         raise ValueError
     saved_state_dict = torch.load(RESTORE_FROM, map_location=lambda storage, loc: storage)
@@ -98,7 +103,7 @@ def main():
     model.eval()
     if not os.path.exists(args.save):
         os.makedirs(args.save, exist_ok=True)
-    targetset = densepassDataSet(args.data_dir, args.data_list, crop_size=(2048,400), set=args.set)
+    targetset = densepass13DataSet(args.data_dir, args.data_list, crop_size=(2048,400), set=args.set)
     testloader = data.DataLoader(targetset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, pin_memory=False)
     interp = nn.Upsample(size=(400, 2048), mode='bilinear', align_corners=True)
     predicted_label = np.zeros((len(targetset), 400, 2048), dtype=np.int8)
@@ -113,7 +118,7 @@ def main():
         image_name.append(name[0])
         image = image.to(device)
         b, c, h, w = image.shape
-        output_temp = torch.zeros((b, 19, h, w), dtype=image.dtype).to(device)
+        output_temp = torch.zeros((b, NUM_CLASSES, h, w), dtype=image.dtype).to(device)
         scales = [0.5,0.75,1.0,1.25,1.5,1.75]
         for sc in scales:
             new_h, new_w = int(sc * h), int(sc * w)
@@ -125,12 +130,12 @@ def main():
         output = F.softmax(output, dim=1)
         output = interp(output).cpu().data[0].numpy()
         output = output.transpose(1,2,0)
-        
+
         label, prob = np.argmax(output, axis=2), np.max(output, axis=2)
         predicted_label[index] = label
         predicted_prob[index] = prob
     thres = []
-    for i in range(19):
+    for i in range(NUM_CLASSES):
         x = predicted_prob[predicted_label==i]
         if len(x) == 0:
             thres.append(0)
@@ -144,12 +149,13 @@ def main():
     for index in range(len(targetset)//BATCH_SIZE):
         name = image_name[index]
         label = predicted_label[index]
+        label = np.asarray(label, dtype=np.uint8)
         prob = predicted_prob[index]
-        for i in range(19):
-            label[(prob<thres[i])*(label==i)] = 255  
-        output = np.asarray(label, dtype=np.uint8)
+        for i in range(NUM_CLASSES):
+            label[(prob<thres[i])*(label==i)] = 255
+        output = label
         output = Image.fromarray(output)
-        name = name.replace('_.png', '_labelTrainIds.png')
+        name = name.replace('.jpg', '_labelTrainIds.png')
         save_fn = os.path.join(args.save, name)
         if not os.path.exists(os.path.dirname(save_fn)):
             os.makedirs(os.path.dirname(save_fn), exist_ok=True)
