@@ -139,6 +139,9 @@ class Trainer(object):
         start_time = time.time()
         logging.info('Start training, Total Epochs: {:d} = Total Iterations {:d}'.format(epochs, max_iters))
 
+        best_iou = 0
+        best_epoch = 0
+
         self.model.train()
         iteration = self.start_epoch * iters_per_epoch if self.start_epoch > 0 else 0
         for (images, targets, _) in self.train_loader:
@@ -179,7 +182,12 @@ class Trainer(object):
 
             if not self.args.skip_val and iteration % val_per_iters == 0:
                 # self.validation(epoch)
-                self.test()
+                mIoU = self.test()
+                if mIoU > best_iou:
+                    best_iou = mIoU
+                    best_epoch = epoch
+                    # save best
+                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True)
                 self.model.train()
 
         total_training_time = time.time() - start_time
@@ -226,8 +234,8 @@ class Trainer(object):
 
 
             self.metric.update(output, target)
-            pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
-            logging.info("[TEST] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
+            # pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
+            # logging.info("[TEST] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
 
         synchronize()
         pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
@@ -239,6 +247,7 @@ class Trainer(object):
             table.append([cls_name, category_iou[i]])
         logging.info('Category iou: \n {}'.format(tabulate(table, headers, tablefmt='grid',
             showindex="always", numalign='center', stralign='center')))
+        return mIoU
 
 
 if __name__ == '__main__':

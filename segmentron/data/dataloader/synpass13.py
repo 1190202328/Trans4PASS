@@ -15,7 +15,7 @@ class SynPASS13Segmentation(SegmentationDataset):
     """SynPASS Semantic Segmentation Dataset."""
     NUM_CLASS = 13
 
-    def __init__(self, root='datasets/SynPASS', split='val', mode=None, transform=None, weather='all', **kwargs):
+    def __init__(self, root='/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS', split='val', mode=None, transform=None, weather='all', **kwargs):
         super(SynPASS13Segmentation, self).__init__(root, split, mode, transform, **kwargs)
         assert os.path.exists(self.root), "Please put dataset in {SEG_ROOT}/datasets/SynPASS"
         self.root = root
