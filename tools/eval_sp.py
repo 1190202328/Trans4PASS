@@ -38,7 +38,7 @@ class Testor(object):
         # dataset and dataloader
         # crop_size = cfg.TEST.CROP_SIZE
         # val_dataset = get_segmentation_dataset('synpass', split='val', mode='val', transform=input_transform, weather=weather)
-        val_dataset = get_segmentation_dataset('synpass', split='test', mode='val', transform=input_transform, weather=weather)
+        val_dataset = get_segmentation_dataset('synpass13', split='test', mode='val', transform=input_transform, weather=weather)
         val_sampler = make_data_sampler(val_dataset, False, args.distributed)
         val_batch_sampler = make_batch_data_sampler(val_sampler, images_per_batch=cfg.TEST.BATCH_SIZE, drop_last=False)
         self.val_loader = data.DataLoader(dataset=val_dataset,
@@ -116,7 +116,7 @@ class Evaluator(object):
 
         # dataset and dataloader
         # crop_size = cfg.TEST.CROP_SIZE
-        val_dataset = get_segmentation_dataset('synpass', split='val', mode='val', transform=input_transform, weather=weather)
+        val_dataset = get_segmentation_dataset('synpass13', split='val', mode='val', transform=input_transform, weather=weather)
         # val_dataset = get_segmentation_dataset('synpass', split='test', mode='val', transform=input_transform, weather=weather)
         val_sampler = make_data_sampler(val_dataset, False, args.distributed)
         val_batch_sampler = make_batch_data_sampler(val_sampler, images_per_batch=cfg.TEST.BATCH_SIZE, drop_last=False)
