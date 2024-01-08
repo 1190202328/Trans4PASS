@@ -14,7 +14,9 @@ TRAIN:
   APEX: False
 TEST:
   BATCH_SIZE: 1
-  TEST_MODEL_PATH: "/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/synpass13/trans4pass_plus_small_512x512/trans4pass_plus_small_512x512.pth"
+  # official
+  #  TEST_MODEL_PATH: "/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/synpass13/trans4pass_plus_small_512x512/trans4pass_plus_small_512x512.pth"
+  TEST_MODEL_PATH: "/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/synpass13/trans4pass_plus_small_512x512/2024-01-07-16-09_best_model.pth"
   CROP_SIZE: (512, 512)
 
 SOLVER:

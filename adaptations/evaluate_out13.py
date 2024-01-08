@@ -38,7 +38,7 @@ SAVE_PATH = './result/' + DIR_NAME
 
 IGNORE_LABEL = 255
 NUM_CLASSES = 13
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS132CS132DP13_Trans4PASS_plus_v2_MPA/BestCS132DP13_G.pth'
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS132CS132DP13_Trans4PASS_plus_v2_MPA/2024-01-07-15-38_BestCS132CS132DP13_60500iter_53.09miou.pth'
 SET = 'val'
 
 EMB_CHANS = 128
