@@ -1,7 +1,8 @@
 import logging
-import torch.nn as nn
 
+import torch.nn as nn
 from torch import optim
+
 from segmentron.config import cfg
 
 
@@ -27,7 +28,7 @@ def _get_paramters(model):
             logging.info('Set bn custom eps for bn in decoder: {}'.format(cfg.MODEL.BN_EPS_FOR_DECODER))
             for module in model.decoder:
                 _set_batch_norm_attr(getattr(model, module).named_modules(), 'eps',
-                                         cfg.MODEL.BN_EPS_FOR_DECODER)
+                                     cfg.MODEL.BN_EPS_FOR_DECODER)
     else:
         logging.info('Model do not have encoder or decoder, params list was from model.parameters(), '
                      'and arguments BN_EPS_FOR_ENCODER, BN_EPS_FOR_DECODER, DECODER_LR_FACTOR not used!')

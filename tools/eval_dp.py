@@ -11,7 +11,6 @@ import logging
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-import torch.nn.functional as F
 
 from tabulate import tabulate
 from torchvision import transforms
@@ -33,7 +32,7 @@ class Evaluator(object):
         input_transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(cfg.DATASET.MEAN, cfg.DATASET.STD),
-        ])  
+        ])
 
         # dataset and dataloader
         # crop_size = cfg.TEST.CROP_SIZE
@@ -50,13 +49,14 @@ class Evaluator(object):
         self.model = get_segmentation_model().to(self.device)
 
         if hasattr(self.model, 'encoder') and hasattr(self.model.encoder, 'named_modules') and \
-            cfg.MODEL.BN_EPS_FOR_ENCODER:
+                cfg.MODEL.BN_EPS_FOR_ENCODER:
             logging.info('set bn custom eps for bn in encoder: {}'.format(cfg.MODEL.BN_EPS_FOR_ENCODER))
             self.set_batch_norm_attr(self.model.encoder.named_modules(), 'eps', cfg.MODEL.BN_EPS_FOR_ENCODER)
 
         if args.distributed:
             self.model = nn.parallel.DistributedDataParallel(self.model,
-                device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
+                                                             device_ids=[args.local_rank],
+                                                             output_device=args.local_rank, find_unused_parameters=True)
         self.model.to(self.device)
 
         self.metric = SegmentationMetric(val_dataset.num_class, args.distributed)
@@ -93,7 +93,7 @@ class Evaluator(object):
         pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
         logging.info('Eval use time: {:.3f} second'.format(time.time() - time_start))
         logging.info('End validation pixAcc: {:.3f}, mIoU: {:.3f}'.format(
-                pixAcc * 100, mIoU * 100))
+            pixAcc * 100, mIoU * 100))
 
         headers = ['class id', 'class name', 'iou']
         table = []

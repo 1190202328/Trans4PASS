@@ -1,9 +1,5 @@
 # this code heavily based on detectron2
 
-import logging
-import torch
-
-from ..config import cfg
 
 class Registry(object):
     """
@@ -41,7 +37,7 @@ class Registry(object):
 
     def _do_register(self, name, obj):
         assert (
-            name not in self._obj_map
+                name not in self._obj_map
         ), "An object named '{}' was already registered in '{}' registry!".format(name, self._name)
         self._obj_map[name] = obj
 
@@ -64,8 +60,6 @@ class Registry(object):
         if name is None:
             name = obj.__name__
         self._do_register(name, obj)
-
-
 
     def get(self, name):
         ret = self._obj_map.get(name)

@@ -20,6 +20,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def download_ade(path, overwrite=False):
     _AUG_DOWNLOAD_URLS = [
         ('http://data.csail.mit.edu/places/ADEchallenge/ADEChallengeData2016.zip',
@@ -32,7 +33,7 @@ def download_ade(path, overwrite=False):
     for url, checksum in _AUG_DOWNLOAD_URLS:
         filename = download(url, path=download_dir, overwrite=overwrite, sha1_hash=checksum)
         # extract
-        with zipfile.ZipFile(filename,"r") as zip_ref:
+        with zipfile.ZipFile(filename, "r") as zip_ref:
             zip_ref.extractall(path=path)
 
 

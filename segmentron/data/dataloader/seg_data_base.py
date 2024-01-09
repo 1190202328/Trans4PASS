@@ -1,12 +1,12 @@
 """Base segmentation dataset"""
 import os
 import random
+
 import numpy as np
 import torchvision
-
 from PIL import Image, ImageOps, ImageFilter
+
 from ...config import cfg
-from IPython import embed
 
 __all__ = ['SegmentationDataset']
 
@@ -69,7 +69,6 @@ class SegmentationDataset(object):
         return img, mask
 
     def _sync_transform(self, img, mask, resize=False):
-
 
         # random mirror
         if cfg.AUG.MIRROR and random.random() < 0.5:

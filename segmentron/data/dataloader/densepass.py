@@ -1,21 +1,22 @@
 """Prepare DensePASS dataset"""
-import os
-import torch
-import numpy as np
 import logging
-
-import torchvision
-from PIL import Image
-from segmentron.data.dataloader.seg_data_base import SegmentationDataset
+import os
 import random
+
+import numpy as np
+import torch
+from PIL import Image
 from torch.utils import data
+
+from segmentron.data.dataloader.seg_data_base import SegmentationDataset
 
 
 class DensePASSSegmentation(SegmentationDataset):
     """DensePASS Semantic Segmentation Dataset."""
     NUM_CLASS = 19
 
-    def __init__(self, root='/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS', split='val', mode=None, transform=None, **kwargs):
+    def __init__(self, root='/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS', split='val',
+                 mode=None, transform=None, **kwargs):
         super(DensePASSSegmentation, self).__init__(root, split, mode, transform, **kwargs)
         assert os.path.exists(self.root), "Please put dataset in {SEG_ROOT}/datasets/DensePASS"
         self.images, self.mask_paths = _get_city_pairs(self.root, self.split)
@@ -39,6 +40,7 @@ class DensePASSSegmentation(SegmentationDataset):
             assert (value in self._mapping)
         index = np.digitize(mask.ravel(), self._mapping, right=True)
         return self._key[index].reshape(mask.shape)
+
     def _val_sync_transform_resize(self, img, mask):
         w, h = img.size
         x1 = random.randint(0, w - self.crop_size[1])
@@ -120,7 +122,7 @@ def _get_city_pairs(folder, split='train'):
         val_img_folder = os.path.join(folder, 'leftImg8bit/val')
         val_mask_folder = os.path.join(folder, 'gtFine/val')
         img_paths, mask_paths = get_path_pairs(val_img_folder, val_mask_folder)
-      
+
     return img_paths, mask_paths
 
 

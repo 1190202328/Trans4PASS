@@ -1,22 +1,20 @@
 '''
 Ref: https://github.com/CharlesPikachu/mcibi
 '''
+from collections import OrderedDict
+
 import numpy as np
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from dataset.cs_dataset_src import CSSrcDataSet
+from dataset.densepass_dataset import densepassDataSet
+from model.trans4pass import Trans4PASS_v1
 from sklearn.cluster import _kmeans
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import StandardScaler
-from tqdm import tqdm
 from torch.utils import data
-from model.trans4pass import Trans4PASS_v1, Trans4PASS_v2
-from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
-import time
+from tqdm import tqdm
 
-from collections import OrderedDict
 NAME_CLASSES = [
     "road",
     "sidewalk",
@@ -43,7 +41,6 @@ palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153,
            0, 60, 100, 0, 80, 100, 0, 0, 230, 119, 11, 32]
 palette = np.split(np.array(palette), 19)
 
-
 '''define the memory cfg'''
 memory_cfg = {
     'num_feats_per_cls': 1,
@@ -55,9 +52,12 @@ memory_cfg = {
 }
 
 '''cluster by using cosine similarity'''
+
+
 def cluster(sparse_data, nclust=1):
     def euc_dist(X, Y=None, Y_norm_squared=None, squared=False):
         return cosine_similarity(X, Y)
+
     _kmeans.euclidean_distances = euc_dist
     out = _kmeans.KMeans(n_clusters=nclust).fit(sparse_data)
     return out.cluster_centers_
@@ -84,20 +84,21 @@ def init_memory(dataloader_src, dataloader_trg, backbone_net, num_classes=19, sa
         memory = [memory_s, memory_t][i]
         name = ['src', 'trg'][i]
         path_mem = memory_cfg['savepath'].replace('.npy', '_{}.npy'.format(name)) if save_path is None else save_path
-        path_feats_dict = memory_cfg['savepath'].replace('.npy', '_{}_feats_dict.npy'.format(name)) if save_path is None else save_path.replace('.npy', '_feats_dict.npy')
+        path_feats_dict = memory_cfg['savepath'].replace('.npy', '_{}_feats_dict.npy'.format(
+            name)) if save_path is None else save_path.replace('.npy', '_feats_dict.npy')
 
         pbar = tqdm(enumerate(dataloader))
         print('Init memory.')
         for batch_idx, samples in pbar:
-            if batch_idx % 100 ==0:
-                pbar.set_description('Processing %s/%s...' % (batch_idx+1, len(dataloader)))
+            if batch_idx % 100 == 0:
+                pbar.set_description('Processing %s/%s...' % (batch_idx + 1, len(dataloader)))
             image, gt, _, _ = samples
             image = image.type(FloatTensor)
             gt = gt.to(image.device)
             b, c, h, w = image.shape
             pred_temp = torch.zeros((b, num_classes, h, w), dtype=image.dtype).to(image.device)
-            feats_temp = torch.zeros((b, memory_cfg['feats_len'], h//4, w//4), dtype=image.dtype).to(image.device)
-            scales = [1] #[0.5, 0.75, 1.0, 1.25, 1.5, 1.75] for multi scales
+            feats_temp = torch.zeros((b, memory_cfg['feats_len'], h // 4, w // 4), dtype=image.dtype).to(image.device)
+            scales = [1]  # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75] for multi scales
             for sc in scales:
                 new_h, new_w = int(sc * h), int(sc * w)
                 img_tem = nn.UpsamplingBilinear2d(size=(new_h, new_w))(image)
@@ -105,31 +106,31 @@ def init_memory(dataloader_src, dataloader_trg, backbone_net, num_classes=19, sa
                     feats, pred = backbone_net(img_tem)
                     feat_fused = sum(feats)
                     pred_temp += nn.UpsamplingBilinear2d(size=(h, w))(pred)
-                    feats_temp += nn.UpsamplingBilinear2d(size=(h//4, w//4))(feat_fused)
+                    feats_temp += nn.UpsamplingBilinear2d(size=(h // 4, w // 4))(feat_fused)
             pred = pred_temp / len(scales)
             feat_fused = feats_temp / len(scales)
             pred_prob = torch.softmax(pred, dim=1)
-            conf, pred_cls = torch.max(pred_prob, dim=1) # pred_cls
+            conf, pred_cls = torch.max(pred_prob, dim=1)  # pred_cls
             pred_cls = F.interpolate(pred_cls.unsqueeze(dim=1).float(), size=feat_fused.shape[-2:], mode='nearest')
             pred_cls = pred_cls.to(image.device)
             gt = F.interpolate(gt.unsqueeze(dim=1).float(), size=feat_fused.shape[-2:], mode='nearest')
             num_channels = feat_fused.size(1)
             clsids = gt.unique()
-            feat_fused = feat_fused.permute(0, 2, 3, 1).contiguous() # B, H, W, C
-            feat_fused = feat_fused.view(-1, num_channels) # BHW, C
+            feat_fused = feat_fused.permute(0, 2, 3, 1).contiguous()  # B, H, W, C
+            feat_fused = feat_fused.view(-1, num_channels)  # BHW, C
             for clsid in clsids:
                 clsid = int(clsid.item())
                 if clsid == memory_cfg['ignore_index']: continue
-                seg_cls = gt.view(-1) # BHW
+                seg_cls = gt.view(-1)  # BHW
                 pred_cls = pred_cls.view(-1)
-                correct_feat_mask = torch.logical_and(seg_cls==clsid, pred_cls==clsid)
+                correct_feat_mask = torch.logical_and(seg_cls == clsid, pred_cls == clsid)
                 if torch.count_nonzero(correct_feat_mask) < 1:
                     continue
                 feats_cls = feat_fused[correct_feat_mask].mean(0).data.cpu()
                 if clsid in feats_dict:
                     feats_dict[clsid].append(feats_cls.unsqueeze(0).numpy())
                 else:
-                    feats_dict[clsid] = [feats_cls.unsqueeze(0).numpy()] # (19, N/Batch=num_samples, (1, feats_len))
+                    feats_dict[clsid] = [feats_cls.unsqueeze(0).numpy()]  # (19, N/Batch=num_samples, (1, feats_len))
         if i == 0:
             feats_dict_s_len = [len(feats_dict[j]) for j in range(num_classes)]
         else:
@@ -138,7 +139,8 @@ def init_memory(dataloader_src, dataloader_trg, backbone_net, num_classes=19, sa
         assert len(feats_dict) == num_classes
         for idx in range(num_classes):
             feats_cls_list = [torch.from_numpy(item) for item in feats_dict[idx]]
-            feats_cls_list = torch.cat(feats_cls_list, dim=0).numpy()  # (N/Batch, feats_len) for each clsid/cluster_center
+            feats_cls_list = torch.cat(feats_cls_list,
+                                       dim=0).numpy()  # (N/Batch, feats_len) for each clsid/cluster_center
             memory[idx] = np.mean(feats_cls_list, axis=0)
 
     # --- joint
@@ -147,7 +149,7 @@ def init_memory(dataloader_src, dataloader_trg, backbone_net, num_classes=19, sa
         feats_dict[k] = feats_dict_s[k] + feats_dict_t[k]
     memory = np.zeros((num_classes, memory_cfg['num_feats_per_cls'], memory_cfg['feats_len']))
     for i in range(num_classes):
-        memory[i] = (memory_s[i]+memory_t[i]) / 2.
+        memory[i] = (memory_s[i] + memory_t[i]) / 2.
     np.save(memory_cfg['savepath'], memory)
 
     return memory

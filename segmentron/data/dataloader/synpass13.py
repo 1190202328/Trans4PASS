@@ -1,21 +1,22 @@
 """Prepare SynPASS13 dataset"""
-import os
-import torch
-import numpy as np
-import logging
-
-import torchvision
-from PIL import Image
-from segmentron.data.dataloader.seg_data_base import SegmentationDataset
-import random
-from torch.utils import data
 import glob
+import logging
+import os
+
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils import data
+
+from segmentron.data.dataloader.seg_data_base import SegmentationDataset
+
 
 class SynPASS13Segmentation(SegmentationDataset):
     """SynPASS Semantic Segmentation Dataset."""
     NUM_CLASS = 13
 
-    def __init__(self, root='/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS', split='val', mode=None, transform=None, weather='all', **kwargs):
+    def __init__(self, root='/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS', split='val',
+                 mode=None, transform=None, weather='all', **kwargs):
         super(SynPASS13Segmentation, self).__init__(root, split, mode, transform, **kwargs)
         assert os.path.exists(self.root), "Please put dataset in {SEG_ROOT}/datasets/SynPASS"
         self.root = root
@@ -24,18 +25,20 @@ class SynPASS13Segmentation(SegmentationDataset):
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
         # self._key = np.array([-1,2,4,-1,11,5,-1,0,1,8,12,3,7,10,-1,-1,-1,-1,6,-1,-1,-1,9])
-        self._key = np.array([-1,2,4,-1,11,5,0,0,1,8,12,3,7,10,-1,-1,-1,-1,6,-1,-1,-1,9])
+        self._key = np.array([-1, 2, 4, -1, 11, 5, 0, 0, 1, 8, 12, 3, 7, 10, -1, -1, -1, -1, 6, -1, -1, -1, 9])
+
     def _map23to13(self, mask):
         values = np.unique(mask)
         new_mask = np.zeros_like(mask)
         new_mask -= 1
         for value in values:
-            if value == 255: 
-                new_mask[mask==value] = -1
+            if value == 255:
+                new_mask[mask == value] = -1
             else:
-                new_mask[mask==value] = self._key[value]
+                new_mask[mask == value] = self._key[value]
         mask = new_mask
         return mask
+
     def _val_sync_transform_resize(self, img, mask):
         # w, h = img.size
         # x1 = random.randint(0, w - self.crop_size[1])
@@ -93,7 +96,7 @@ def _get_city_pairs(folder, split='train'):
     # datasets/SynPASS/semantic/cloud/train/MAP_1_point2/000000_trainID.png
     mask_paths = glob.glob(os.path.join(*[folder, 'semantic', '*', split, '*', '*_trainID.png']))
     mask_paths = sorted(mask_paths)
-    assert len(img_paths)==len(mask_paths)
+    assert len(img_paths) == len(mask_paths)
     logging.info('Found {} images in the folder {}'.format(len(img_paths), folder))
     return img_paths, mask_paths
 

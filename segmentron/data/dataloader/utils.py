@@ -1,9 +1,11 @@
-import os
-import hashlib
 import errno
+import hashlib
+import os
 import tarfile
+
 from six.moves import urllib
 from torch.utils.model_zoo import tqdm
+
 
 def gen_bar_updater():
     pbar = tqdm(total=None)
@@ -15,6 +17,7 @@ def gen_bar_updater():
         pbar.update(progress_bytes - pbar.n)
 
     return bar_update
+
 
 def check_integrity(fpath, md5=None):
     if md5 is None:
@@ -31,6 +34,7 @@ def check_integrity(fpath, md5=None):
         return False
     return True
 
+
 def makedir_exist_ok(dirpath):
     try:
         os.makedirs(dirpath)
@@ -39,6 +43,7 @@ def makedir_exist_ok(dirpath):
             pass
         else:
             pass
+
 
 def download_url(url, root, filename=None, md5=None):
     """Download a file from a url and place it in root."""
@@ -62,6 +67,7 @@ def download_url(url, root, filename=None, md5=None):
                 print('Failed download. Trying https -> http instead.'
                       ' Downloading ' + url + ' to ' + fpath)
                 urllib.request.urlretrieve(url, fpath, reporthook=gen_bar_updater())
+
 
 def download_extract(url, root, filename, md5):
     download_url(url, root, filename, md5)

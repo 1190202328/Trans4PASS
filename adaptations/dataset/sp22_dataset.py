@@ -1,5 +1,4 @@
 import os.path as osp
-import os.path as osp
 
 import numpy as np
 import torch
@@ -8,12 +7,10 @@ from PIL import Image
 from torch.utils import data
 from torchvision import transforms
 
-from utils.transform import FixScaleRandomCropWH
-
 
 class synpassDataSet(data.Dataset):
-    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), 
-                scale=True, mirror=True, ignore_label=255, set='val'):
+    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128),
+                 scale=True, mirror=True, ignore_label=255, set='val'):
         self.root = root
         self.list_path = list_path
         self.crop_size = crop_size
@@ -22,7 +19,7 @@ class synpassDataSet(data.Dataset):
         self.mean = mean
         self.is_mirror = mirror
         self.img_ids = [i_id.strip() for i_id in open(list_path)]
-        if not max_iters==None:
+        if not max_iters == None:
             self.img_ids = self.img_ids * int(np.ceil(float(max_iters) / len(self.img_ids)))
         self.files = []
         self.set = set
@@ -35,13 +32,13 @@ class synpassDataSet(data.Dataset):
                 "label": label_file,
                 "name": name
             })
-        self._key = np.array([255,2,4,255,11,5,0,0,1,8,12,3,7,10,255,255,255,255,6,255,255,255,9])
+        self._key = np.array([255, 2, 4, 255, 11, 5, 0, 0, 1, 8, 12, 3, 7, 10, 255, 255, 255, 255, 6, 255, 255, 255, 9])
 
     def __len__(self):
         return len(self.files)
 
     def _map23to22(self, mask):
-        mask[mask==0] = 255
+        mask[mask == 0] = 255
         # values = np.unique(mask)
         # new_mask = np.ones_like(mask) * 255
         # # new_mask -= 1
@@ -77,7 +74,7 @@ class synpassDataSet(data.Dataset):
 
 
 if __name__ == '__main__':
-    dst = synpassTestDataSet("data/SynPASS", 'dataset/SynPASS_list/val.txt', mean=(0,0,0))
+    dst = synpassTestDataSet("data/SynPASS", 'dataset/SynPASS_list/val.txt', mean=(0, 0, 0))
     trainloader = data.DataLoader(dst, batch_size=4)
     for i, data in enumerate(trainloader):
         imgs, labels, *args = data
@@ -85,6 +82,6 @@ if __name__ == '__main__':
             img = torchvision.utils.make_grid(imgs).numpy()
             img = np.transpose(img, (1, 2, 0))
             img = img[:, :, ::-1]
-            img = Image.fromarray(np.uint8(img) )
+            img = Image.fromarray(np.uint8(img))
             img.show()
         break

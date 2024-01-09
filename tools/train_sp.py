@@ -1,8 +1,8 @@
-import time
 import copy
 import datetime
 import os
 import sys
+import time
 
 cur_path = os.path.abspath(os.path.dirname(__file__))
 root_path = os.path.split(cur_path)[0]
@@ -12,7 +12,6 @@ import logging
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-import torch.nn.functional as F
 
 from torchvision import transforms
 from segmentron.data.dataloader import get_segmentation_dataset
@@ -25,15 +24,15 @@ from segmentron.utils.score import SegmentationMetric
 from segmentron.utils.filesystem import save_checkpoint
 from segmentron.utils.options import parse_args
 from segmentron.utils.default_setup import default_setup
-from segmentron.utils.visualize import show_flops_params, get_color_pallete
+from segmentron.utils.visualize import show_flops_params
 from segmentron.config import cfg
 from tabulate import tabulate
-from IPython import embed
-from PIL import Image
+
 try:
     import apex
 except:
     print('apex is not installed')
+
 
 class Trainer(object):
     def __init__(self, args):
@@ -52,8 +51,8 @@ class Trainer(object):
                        'crop_size': cfg.TRAIN.CROP_SIZE}
 
         data_kwargs_testval = {'transform': input_transform,
-                       'base_size': cfg.TRAIN.BASE_SIZE,
-                       'crop_size': cfg.TEST.CROP_SIZE}
+                               'base_size': cfg.TRAIN.BASE_SIZE,
+                               'crop_size': cfg.TEST.CROP_SIZE}
 
         train_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='train', mode='train', **data_kwargs)
         val_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='val', mode='testval', **data_kwargs_testval)
@@ -65,7 +64,8 @@ class Trainer(object):
         self.max_iters = cfg.TRAIN.EPOCHS * self.iters_per_epoch
 
         train_sampler = make_data_sampler(train_dataset, shuffle=True, distributed=args.distributed)
-        train_batch_sampler = make_batch_data_sampler(train_sampler, cfg.TRAIN.BATCH_SIZE, self.max_iters, drop_last=True)
+        train_batch_sampler = make_batch_data_sampler(train_sampler, cfg.TRAIN.BATCH_SIZE, self.max_iters,
+                                                      drop_last=True)
 
         test_sampler = make_data_sampler(test_dataset, False, args.distributed)
         test_batch_sampler = make_batch_data_sampler(test_sampler, cfg.TEST.BATCH_SIZE, drop_last=False)
@@ -75,14 +75,14 @@ class Trainer(object):
                                             num_workers=cfg.DATASET.WORKERS,
                                             pin_memory=True)
         self.test_loader = data.DataLoader(dataset=test_dataset,
-                                          batch_sampler=test_batch_sampler,
-                                          num_workers=cfg.DATASET.WORKERS,
-                                          pin_memory=True)
+                                           batch_sampler=test_batch_sampler,
+                                           num_workers=cfg.DATASET.WORKERS,
+                                           pin_memory=True)
 
         # create network
         self.model = get_segmentation_model().to(self.device)
         logging.info(self.model)
-        
+
         # print params and flops
         if get_rank() == 0:
             try:
@@ -107,7 +107,8 @@ class Trainer(object):
             logging.info('**** Initializing mixed precision done. ****')
 
         # lr scheduling
-        self.lr_scheduler = get_scheduler(self.optimizer, max_iters=self.max_iters, iters_per_epoch=self.iters_per_epoch)
+        self.lr_scheduler = get_scheduler(self.optimizer, max_iters=self.max_iters,
+                                          iters_per_epoch=self.iters_per_epoch)
         # resume checkpoint if needed
         self.start_epoch = 0
         if args.resume and os.path.isfile(args.resume):
@@ -232,7 +233,6 @@ class Trainer(object):
             with torch.no_grad():
                 output = model(image)[0]
 
-
             self.metric.update(output, target)
             # pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
             # logging.info("[TEST] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
@@ -246,7 +246,7 @@ class Trainer(object):
         for i, cls_name in enumerate(self.classes):
             table.append([cls_name, category_iou[i]])
         logging.info('Category iou: \n {}'.format(tabulate(table, headers, tablefmt='grid',
-            showindex="always", numalign='center', stralign='center')))
+                                                           showindex="always", numalign='center', stralign='center')))
         return mIoU
 
 

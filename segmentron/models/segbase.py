@@ -1,21 +1,22 @@
 """Base Model for Semantic Segmentation"""
 import math
 import numbers
-import numpy as np
-import torch
+
 import torch.nn as nn
 import torch.nn.functional as F
 
 from .backbones import get_segmentation_backbone
+from ..config import cfg
 from ..data.dataloader import datasets
 from ..modules import get_norm
-from ..config import cfg
+
 __all__ = ['SegBaseModel']
 
 
 class SegBaseModel(nn.Module):
     r"""Base Model for Semantic Segmentation
     """
+
     def __init__(self, need_backbone=True):
         super(SegBaseModel, self).__init__()
         self.nclass = datasets[cfg.DATASET.NAME].NUM_CLASS
@@ -86,7 +87,7 @@ def _resize_image(img, h, w):
 
 def _pad_image(img, crop_size):
     b, c, h, w = img.shape
-    assert(c == 3)
+    assert (c == 3)
     padh = crop_size[0] - h if h < crop_size[0] else 0
     padw = crop_size[1] - w if w < crop_size[1] else 0
     if padh == 0 and padw == 0:
@@ -101,7 +102,7 @@ def _crop_image(img, h0, h1, w0, w1):
 
 
 def _flip_image(img):
-    assert(img.ndim == 4)
+    assert (img.ndim == 4)
     return img.flip((3))
 
 

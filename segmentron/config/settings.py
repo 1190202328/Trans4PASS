@@ -30,9 +30,9 @@ cfg.DATASET.MODE = 'testval'
 cfg.DATASET2.NAME = ''
 cfg.DATASET2.IGNORE_INDEX = -1
 # pixel mean
-cfg.DATASET2.MEAN = [ 0.485, 0.456, 0.406 ]
+cfg.DATASET2.MEAN = [0.485, 0.456, 0.406]
 # pixel std
-cfg.DATASET2.STD = [ 0.229, 0.224, 0.225 ]
+cfg.DATASET2.STD = [0.229, 0.224, 0.225]
 
 ########################### data augment ######################################
 # data augment image mirror
@@ -85,7 +85,7 @@ cfg.SOLVER.EPSILON = 1e-8
 # optimizer momentum
 cfg.SOLVER.MOMENTUM = 0.9
 # weight decay
-cfg.SOLVER.WEIGHT_DECAY = 1e-4 #0.00004
+cfg.SOLVER.WEIGHT_DECAY = 1e-4  # 0.00004
 # decoder lr x10
 cfg.SOLVER.DECODER_LR_FACTOR = 10.0
 # lr scheduler mode
@@ -156,8 +156,6 @@ cfg.MODEL.EMB_CHANNELS = 64
 cfg.MODEL.USE_DCN = [True, False, False, False]
 cfg.MODEL.USE_DEDE = [True, True, True, True]
 
-
-
 ########################## DANet config ####################################
 # danet param
 cfg.MODEL.DANET.MULTI_DILATION = None
@@ -186,7 +184,6 @@ cfg.MODEL.OCNet.OC_ARCH = 'base'
 cfg.MODEL.ENCNET.SE_LOSS = True
 cfg.MODEL.ENCNET.SE_WEIGHT = 0.2
 cfg.MODEL.ENCNET.LATERAL = True
-
 
 ########################## CCNET config ######################################
 cfg.MODEL.CCNET.RECURRENCE = 2
@@ -232,7 +229,6 @@ cfg.MODEL.HRNET.STAGE4.NUM_CHANNELS = [32, 64, 128, 256]
 cfg.MODEL.HRNET.STAGE4.BLOCK = 'BASIC'
 cfg.MODEL.HRNET.STAGE4.FUSE_METHOD = 'SUM'
 
-
 ########################## translab config ######################################
 cfg.MODEL.TRANSLAB.BOUNDARY_WEIGHT = 5
 
@@ -242,6 +238,3 @@ cfg.MODEL.TRANS2Seg.depth = 4
 cfg.MODEL.TRANS2Seg.num_heads = 8
 cfg.MODEL.TRANS2Seg.mlp_ratio = 3.
 cfg.MODEL.TRANS2Seg.hid_dim = 64
-
-
-

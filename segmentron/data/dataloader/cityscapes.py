@@ -1,12 +1,14 @@
 """Prepare Cityscapes dataset"""
-import os
-import torch
-import numpy as np
 import logging
-
-from PIL import Image
-from .seg_data_base import SegmentationDataset
+import os
 import random
+
+import numpy as np
+import torch
+from PIL import Image
+
+from .seg_data_base import SegmentationDataset
+
 
 class CitySegmentation(SegmentationDataset):
     """Cityscapes Semantic Segmentation Dataset."""
@@ -35,6 +37,7 @@ class CitySegmentation(SegmentationDataset):
             assert (value in self._mapping)
         index = np.digitize(mask.ravel(), self._mapping, right=True)
         return self._key[index].reshape(mask.shape)
+
     def _val_sync_transform_resize(self, img, mask):
         w, h = img.size
         x1 = random.randint(0, w - self.crop_size[1])
@@ -114,7 +117,7 @@ def _get_city_pairs(folder, split='train'):
         val_img_folder = os.path.join(folder, 'leftImg8bit/val')
         val_mask_folder = os.path.join(folder, 'gtFine/val')
         img_paths, mask_paths = get_path_pairs(val_img_folder, val_mask_folder)
-      
+
     return img_paths, mask_paths
 
 

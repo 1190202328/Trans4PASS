@@ -1,8 +1,8 @@
 import torch.nn as nn
 
-from ...modules import SeparableConv2d
 from .build import BACKBONE_REGISTRY
 from ...config import cfg
+from ...modules import SeparableConv2d
 
 __all__ = ['Xception65', 'Enc', 'FCAttention']
 
@@ -280,4 +280,3 @@ def xception_a(norm_layer=nn.BatchNorm2d):
 def xception65(norm_layer=nn.BatchNorm2d):
     model = Xception65(norm_layer=norm_layer)
     return model
-

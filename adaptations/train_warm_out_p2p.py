@@ -1,32 +1,28 @@
-import glob
-import shutil
-
-import torch
-import torch.nn as nn
-from torch.utils import data, model_zoo
-import numpy as np
-from torch.autograd import Variable
-import torch.optim as optim
-
-import torch.backends.cudnn as cudnn
-import torch.nn.functional as F
-import logging, sys
-import time
-from tensorboardX import SummaryWriter
-
-from dataset.sp13_dataset import synpass13DataSet
-from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
-from model.discriminator import FCDiscriminator
-from dataset.cs13_dataset_src import CS13SrcDataSet
-from dataset.dp13_dataset import densepass13DataSet, densepass13TestDataSet
-from compute_iou import compute_mIoU
 import argparse
+import glob
+import logging
 import os
 import os.path as osp
-from PIL import Image
-from torchvision import transforms
-from compute_iou import fast_hist, per_class_iu
+import sys
+import time
 from collections import OrderedDict
+
+import numpy as np
+import torch
+import torch.backends.cudnn as cudnn
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from tensorboardX import SummaryWriter
+from torch.autograd import Variable
+from torch.utils import data
+
+from compute_iou import fast_hist, per_class_iu
+from dataset.cs13_dataset_src import CS13SrcDataSet
+from dataset.dp13_dataset import densepass13DataSet, densepass13TestDataSet
+from dataset.sp13_dataset import synpass13DataSet
+from model.discriminator import FCDiscriminator
+from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
@@ -56,7 +52,7 @@ DATA_DIRECTORY_TARGET = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/Dens
 DATA_LIST_PATH_TARGET = 'dataset/densepass_list/train.txt'
 DATA_LIST_PATH_TARGET_TEST = 'dataset/densepass_list/val.txt'
 INPUT_SIZE_TARGET = '2048,400'
-TARGET_TRANSFORM = 'FixScaleRandomCropWH' 
+TARGET_TRANSFORM = 'FixScaleRandomCropWH'
 INPUT_SIZE_TARGET_TEST = '2048,400'
 LEARNING_RATE = 2.5e-6
 MOMENTUM = 0.9
@@ -84,6 +80,7 @@ SET = 'train'
 
 NAME_CLASSES = ['road', 'sidewalk', 'building', 'wall', 'fence', 'pole', 'traffic light',
                 'traffic sign', 'vegetation', 'terrain', 'sky', 'person', 'car']
+
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -174,7 +171,9 @@ def get_arguments():
                         help="Path to save result.")
     return parser.parse_args()
 
+
 args = get_arguments()
+
 
 def setup_logger(name, save_dir, filename="log.txt", mode='w'):
     logging.root.name = name
@@ -194,8 +193,10 @@ def setup_logger(name, save_dir, filename="log.txt", mode='w'):
     ch.setFormatter(formatter)
     logging.root.addHandler(ch)
 
+
 TIME_STAMP = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
 setup_logger('Trans4PASS', SNAPSHOT_DIR, filename=f'{TIME_STAMP}_log.txt')
+
 
 def lr_poly(base_lr, iter, max_iter, power):
     return base_lr * ((1 - float(iter) / max_iter) ** (power))
@@ -231,6 +232,7 @@ def load_my_state_dict(model, state_dict):  # custom function to load model when
         else:
             own_state[name].copy_(param)
     return model
+
 
 def main():
     """Create the model and start the training."""
@@ -306,19 +308,25 @@ def main():
 
     # init data loader
     if SOURCE_NAME == 'CS13':
-        trainset = CS13SrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
-                                crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set)
+        trainset = CS13SrcDataSet(args.data_dir, args.data_list,
+                                  max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                  crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror,
+                                  mean=IMG_MEAN, set=args.set)
     elif SOURCE_NAME == 'SP13':
-        trainset = synpass13DataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
-                                crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set)
+        trainset = synpass13DataSet(args.data_dir, args.data_list,
+                                    max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                    crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror,
+                                    mean=IMG_MEAN, set=args.set)
     else:
         raise Exception
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                   pin_memory=True)
     trainloader_iter = enumerate(trainloader)
-    targetset = densepass13DataSet(args.data_dir_target, args.data_list_target, max_iters=args.num_steps * args.iter_size * args.batch_size,
-                                 crop_size=input_size_target, scale=False, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set,
-                                 trans=TARGET_TRANSFORM)
+    targetset = densepass13DataSet(args.data_dir_target, args.data_list_target,
+                                   max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                   crop_size=input_size_target, scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
+                                   set=args.set,
+                                   trans=TARGET_TRANSFORM)
     targetloader = data.DataLoader(targetset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                    pin_memory=True)
     targetloader_iter = enumerate(targetloader)
@@ -328,7 +336,7 @@ def main():
     # test_h, test_w = 400, 2048
     test_w, test_h = input_size_target_test
     targettestset = densepass13TestDataSet(args.data_dir_target, args.data_list_target_test, crop_size=(test_w, test_h),
-                                         mean=IMG_MEAN, scale=False, mirror=False, set='val')
+                                           mean=IMG_MEAN, scale=False, mirror=False, set='val')
     testloader = data.DataLoader(targettestset, batch_size=1, shuffle=False, pin_memory=True)
 
     model.train()
@@ -359,7 +367,6 @@ def main():
         if not os.path.exists(args.log_dir):
             os.makedirs(args.log_dir)
         writer = SummaryWriter(args.log_dir)
-
 
     # start training
     for i_iter in range(Iter, args.num_steps):
@@ -456,8 +463,10 @@ def main():
 
         if i_iter >= args.num_steps_stop - 1:
             logging.info('save model ...')
-            torch.save(model.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '.pth'))
-            torch.save(model_D.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '_D.pth'))
+            torch.save(model.state_dict(),
+                       osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '.pth'))
+            torch.save(model_D.state_dict(),
+                       osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '_D.pth'))
             break
 
         if i_iter % args.save_pred_every == 0 and i_iter != 0:
@@ -469,10 +478,10 @@ def main():
             for index, batch in enumerate(testloader):
                 image, label, _, name = batch
                 with torch.no_grad():
-                    output1, output2 = model(Variable(image).to(device))               
-                # output = test_interp(output2).cpu().data[0].numpy()
+                    output1, output2 = model(Variable(image).to(device))
+                    # output = test_interp(output2).cpu().data[0].numpy()
                 output = output2.cpu().data[0].numpy()
-                output = output.transpose(1,2,0)
+                output = output.transpose(1, 2, 0)
                 output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
                 label = label.cpu().data[0].numpy()
                 hist += fast_hist(label.flatten(), output.flatten(), args.num_classes)
@@ -483,17 +492,19 @@ def main():
             logging.info('===> mIoU: ' + str(mIoU))
             if mIoU > bestIoU:
                 bestIoU = mIoU
-                pre_filename = osp.join(args.snapshot_dir, TIME_STAMP+'_Best*.pth')
+                pre_filename = osp.join(args.snapshot_dir, TIME_STAMP + '_Best*.pth')
                 pre_filename = glob.glob(pre_filename)
                 try:
                     for p in pre_filename:
                         os.remove(p)
                 except OSError as e:
                     logging.info(e)
-                torch.save(model.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP+'_Best{}2{}_{}iter_{}miou.pth'.format(
-                    SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
-                torch.save(model_D.state_dict(), osp.join(args.snapshot_dir, TIME_STAMP+'_Best{}2{}_{}iter_D_{}miou.pth'.format(
-                    SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
+                torch.save(model.state_dict(),
+                           osp.join(args.snapshot_dir, TIME_STAMP + '_Best{}2{}_{}iter_{}miou.pth'.format(
+                               SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
+                torch.save(model_D.state_dict(),
+                           osp.join(args.snapshot_dir, TIME_STAMP + '_Best{}2{}_{}iter_D_{}miou.pth'.format(
+                               SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
             model.train()
 
     if args.tensorboard:

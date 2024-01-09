@@ -1,10 +1,12 @@
 # this code heavily reference: detectron2
 from __future__ import division
+
 import math
+from bisect import bisect_right
+from typing import List
+
 import torch
 
-from typing import List
-from bisect import bisect_right
 from segmentron.config import cfg
 
 __all__ = ['get_scheduler']
@@ -45,14 +47,14 @@ class WarmupPolyLR(torch.optim.lr_scheduler._LRScheduler):
 
 class WarmupMultiStepLR(torch.optim.lr_scheduler._LRScheduler):
     def __init__(
-        self,
-        optimizer: torch.optim.Optimizer,
-        milestones: List[int],
-        gamma: float = 0.1,
-        warmup_factor: float = 0.001,
-        warmup_iters: int = 1000,
-        warmup_method: str = "linear",
-        last_epoch: int = -1,
+            self,
+            optimizer: torch.optim.Optimizer,
+            milestones: List[int],
+            gamma: float = 0.1,
+            warmup_factor: float = 0.001,
+            warmup_iters: int = 1000,
+            warmup_method: str = "linear",
+            last_epoch: int = -1,
     ):
         if not list(milestones) == sorted(milestones):
             raise ValueError(
@@ -81,13 +83,13 @@ class WarmupMultiStepLR(torch.optim.lr_scheduler._LRScheduler):
 
 class WarmupCosineLR(torch.optim.lr_scheduler._LRScheduler):
     def __init__(
-        self,
-        optimizer: torch.optim.Optimizer,
-        max_iters: int,
-        warmup_factor: float = 0.001,
-        warmup_iters: int = 1000,
-        warmup_method: str = "linear",
-        last_epoch: int = -1,
+            self,
+            optimizer: torch.optim.Optimizer,
+            max_iters: int,
+            warmup_factor: float = 0.001,
+            warmup_iters: int = 1000,
+            warmup_method: str = "linear",
+            last_epoch: int = -1,
     ):
         self.max_iters = max_iters
         self.warmup_factor = warmup_factor
@@ -118,7 +120,7 @@ class WarmupCosineLR(torch.optim.lr_scheduler._LRScheduler):
 
 
 def _get_warmup_factor_at_iter(
-    method: str, iter: int, warmup_iters: int, warmup_factor: float
+        method: str, iter: int, warmup_iters: int, warmup_factor: float
 ) -> float:
     """
     Return the learning rate warmup factor at a specific iteration.
@@ -163,4 +165,3 @@ def get_scheduler(optimizer, max_iters, iters_per_epoch):
                                  warmup_method=cfg.SOLVER.WARMUP.METHOD)
     else:
         raise ValueError("not support lr scheduler method!")
-

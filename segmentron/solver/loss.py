@@ -1,16 +1,18 @@
 """Custom losses."""
 import logging
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from torch.autograd import Variable
+
 from .lovasz_losses import lovasz_softmax
+from ..config import cfg
 # from ..models.pointrend import point_sample
 from ..data.dataloader import datasets
-from ..config import cfg
 
 __all__ = ['get_segmentation_loss']
+
 
 class TranslabLoss(nn.CrossEntropyLoss):
     def __init__(self, aux=True, aux_weight=0.2, ignore_index=-1, **kwargs):
@@ -40,6 +42,7 @@ class TranslabLoss(nn.CrossEntropyLoss):
 
         loss = dict(loss=super(TranslabLoss, self).forward(*inputs))
         return loss
+
 
 class MixSoftmaxCrossEntropyLoss(nn.CrossEntropyLoss):
     def __init__(self, aux=True, aux_weight=0.2, ignore_index=-1, **kwargs):
@@ -76,6 +79,7 @@ class MixSoftmaxCrossEntropyLoss(nn.CrossEntropyLoss):
 
 class ICNetLoss(nn.CrossEntropyLoss):
     """Cross Entropy Loss for ICNet"""
+
     def __init__(self, aux_weight=0.4, ignore_index=-1, **kwargs):
         super(ICNetLoss, self).__init__(ignore_index=ignore_index)
         self.aux_weight = aux_weight
@@ -317,6 +321,7 @@ class BinaryDiceLoss(nn.Module):
     Raise:
         Exception if unexpected reduction
     """
+
     def __init__(self, smooth=1, p=2, reduction='mean'):
         super(BinaryDiceLoss, self).__init__()
         self.smooth = smooth
@@ -397,7 +402,7 @@ class PointRendLoss(nn.CrossEntropyLoss):
 
     def forward(self, *inputs, **kwargs):
         result, gt = tuple(inputs)
-        
+
         pred = F.interpolate(result["coarse"], gt.shape[-2:], mode="bilinear", align_corners=True)
         seg_loss = F.cross_entropy(pred, gt, ignore_index=self.ignore_index)
 

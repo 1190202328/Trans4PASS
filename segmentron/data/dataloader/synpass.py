@@ -1,15 +1,15 @@
 """Prepare SynPASS dataset"""
-import os
-import torch
-import numpy as np
-import logging
-
-import torchvision
-from PIL import Image
-from segmentron.data.dataloader.seg_data_base import SegmentationDataset
-import random
-from torch.utils import data
 import glob
+import logging
+import os
+
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils import data
+
+from segmentron.data.dataloader.seg_data_base import SegmentationDataset
+
 
 class SynPASSSegmentation(SegmentationDataset):
     """SynPASS Semantic Segmentation Dataset."""
@@ -24,19 +24,20 @@ class SynPASSSegmentation(SegmentationDataset):
         assert (len(self.images) == len(self.mask_paths))
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
-        self._key = np.array([-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21])
+        self._key = np.array([-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21])
 
     def _map23to22(self, mask):
         values = np.unique(mask)
         new_mask = np.zeros_like(mask)
         new_mask -= 1
         for value in values:
-            if value == 255: 
-                new_mask[mask==value] = -1
+            if value == 255:
+                new_mask[mask == value] = -1
             else:
-                new_mask[mask==value] = self._key[value]
+                new_mask[mask == value] = self._key[value]
         mask = new_mask
         return mask
+
     def _val_sync_transform_resize(self, img, mask):
         img, mask = self._img_transform(img), self._mask_transform(mask)
         return img, mask
@@ -59,7 +60,7 @@ class SynPASSSegmentation(SegmentationDataset):
             img = self.transform(img)
 
         return img, mask, os.path.basename(self.images[index])
-    
+
     def _mask_transform(self, mask):
         target = self._map23to22(np.array(mask).astype('int32'))
         return torch.LongTensor(np.array(target).astype('int32'))
@@ -74,10 +75,10 @@ class SynPASSSegmentation(SegmentationDataset):
     @property
     def classes(self):
         """Category names."""
-        return ('Building','Fence','Other','Pedestrian','Pole','RoadLine',
-        'Road','SideWalk','Vegetation','Vehicles',
-        'Wall','TrafficSign','Sky','Ground','Bridge','RailTrack',
-        'GroundRail','TrafficLight','Static','Dynamic','Water','Terrain',)
+        return ('Building', 'Fence', 'Other', 'Pedestrian', 'Pole', 'RoadLine',
+                'Road', 'SideWalk', 'Vegetation', 'Vehicles',
+                'Wall', 'TrafficSign', 'Sky', 'Ground', 'Bridge', 'RailTrack',
+                'GroundRail', 'TrafficLight', 'Static', 'Dynamic', 'Water', 'Terrain',)
 
 
 def _get_city_pairs(folder, split='train', weather='all'):
@@ -85,7 +86,7 @@ def _get_city_pairs(folder, split='train', weather='all'):
     img_paths = glob.glob(os.path.join(*[folder, 'img', '*', split, '*', '*.jpg']))
     # datasets/SynPASS/semantic/cloud/train/MAP_1_point2/000000_trainID.png
     mask_paths = glob.glob(os.path.join(*[folder, 'semantic', '*', split, '*', '*_trainID.png']))
-    assert len(img_paths)==len(mask_paths)
+    assert len(img_paths) == len(mask_paths)
     if weather in ['/cloud', '/fog', '/rain', '/sun']:
         img_paths = [m for m in img_paths if weather in m]
         mask_paths = [m for m in mask_paths if weather in m]
@@ -100,16 +101,18 @@ def _get_city_pairs(folder, split='train', weather='all'):
                 new_mask_paths.append(mask)
         img_paths = new_img_paths
         mask_paths = new_mask_paths
-    img_paths = sorted(img_paths)    
+    img_paths = sorted(img_paths)
     mask_paths = sorted(mask_paths)
     assert len(img_paths) == len(mask_paths)
     logging.info('Found {} images in the folder {}'.format(len(img_paths), folder))
     return img_paths, mask_paths
 
+
 def read_list(t):
     with open(t) as f:
         l = [line.rstrip() for line in f]
     return l
+
 
 if __name__ == '__main__':
     dst = SynPASSSegmentation(split='train', mode='train')

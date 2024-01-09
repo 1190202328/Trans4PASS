@@ -1,11 +1,11 @@
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ...modules import _ConvBNPReLU, _ConvBN, _BNPReLU, EESP
 from .build import BACKBONE_REGISTRY
-from ...config import cfg
+from ...modules import _ConvBNPReLU, _ConvBN, EESP
 
 __all__ = ['EESPNet', 'eespnet']
 
@@ -149,6 +149,7 @@ class EESPNet(nn.Module):
 @BACKBONE_REGISTRY.register()
 def eespnet(norm_layer=nn.BatchNorm2d):
     return EESPNet(norm_layer=norm_layer)
+
 
 # def eespnet(pretrained=False, **kwargs):
 #     model = EESPNet(**kwargs)

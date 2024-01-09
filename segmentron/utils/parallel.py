@@ -1,10 +1,11 @@
 """Utils for Semantic Segmentation"""
 import threading
+
 import torch
 import torch.cuda.comm as comm
-from torch.nn.parallel.data_parallel import DataParallel
-from torch.nn.parallel._functions import Broadcast
 from torch.autograd import Function
+from torch.nn.parallel._functions import Broadcast
+from torch.nn.parallel.data_parallel import DataParallel
 
 __all__ = ['DataParallelModel', 'DataParallelCriterion']
 

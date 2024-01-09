@@ -1,7 +1,7 @@
 """Prepare Cityscapes dataset"""
+import argparse
 import os
 import sys
-import argparse
 import zipfile
 
 cur_path = os.path.abspath(os.path.dirname(__file__))

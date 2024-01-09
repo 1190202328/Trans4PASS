@@ -1,8 +1,8 @@
 """Basic Module for Semantic Segmentation"""
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
-
-from collections import OrderedDict
 
 __all__ = ['_ConvBNPReLU', '_ConvBN', '_BNPReLU', '_ConvBNReLU', '_DepthwiseConv', 'InvertedResidual',
            'SeparableConv2d']

@@ -1,11 +1,12 @@
 """
 Train on Cityscapes13
 """
-import time
 import copy
 import datetime
 import os
 import sys
+import time
+
 # os.chdir(sys.path[0])
 
 cur_path = os.path.abspath(os.path.dirname(__file__))
@@ -16,7 +17,6 @@ import logging
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-import torch.nn.functional as F
 
 from torchvision import transforms
 from segmentron.data.dataloader import get_segmentation_dataset
@@ -32,12 +32,12 @@ from segmentron.utils.default_setup import default_setup
 from segmentron.utils.visualize import show_flops_params, get_color_pallete
 from segmentron.config import cfg
 from tabulate import tabulate
-from IPython import embed
-from PIL import Image
+
 try:
     import apex
 except:
     print('apex is not installed')
+
 
 class Trainer(object):
     def __init__(self, args):
@@ -56,8 +56,8 @@ class Trainer(object):
                        'crop_size': cfg.TRAIN.CROP_SIZE}
 
         data_kwargs_testval = {'transform': input_transform,
-                       'base_size': cfg.TRAIN.BASE_SIZE,
-                       'crop_size': cfg.TEST.CROP_SIZE}
+                               'base_size': cfg.TRAIN.BASE_SIZE,
+                               'crop_size': cfg.TEST.CROP_SIZE}
 
         train_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='train', mode='train', **data_kwargs)
         test_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='val', mode='testval', **data_kwargs_testval)
@@ -70,7 +70,8 @@ class Trainer(object):
         self.max_iters = cfg.TRAIN.EPOCHS * self.iters_per_epoch
 
         train_sampler = make_data_sampler(train_dataset, shuffle=True, distributed=args.distributed)
-        train_batch_sampler = make_batch_data_sampler(train_sampler, cfg.TRAIN.BATCH_SIZE, self.max_iters, drop_last=True)
+        train_batch_sampler = make_batch_data_sampler(train_sampler, cfg.TRAIN.BATCH_SIZE, self.max_iters,
+                                                      drop_last=True)
 
         test_sampler = make_data_sampler(test_dataset, False, args.distributed)
         test_batch_sampler = make_batch_data_sampler(test_sampler, cfg.TEST.BATCH_SIZE, drop_last=False)
@@ -84,19 +85,19 @@ class Trainer(object):
                                             num_workers=cfg.DATASET.WORKERS,
                                             pin_memory=True)
         self.test_loader = data.DataLoader(dataset=test_dataset,
-                                          batch_sampler=test_batch_sampler,
-                                          num_workers=cfg.DATASET.WORKERS,
-                                          pin_memory=True)
-        # --- monitor
-        self.test_loader_2 = data.DataLoader(dataset=test_dataset_2,
-                                           batch_sampler=test_batch_sampler_2,
+                                           batch_sampler=test_batch_sampler,
                                            num_workers=cfg.DATASET.WORKERS,
                                            pin_memory=True)
+        # --- monitor
+        self.test_loader_2 = data.DataLoader(dataset=test_dataset_2,
+                                             batch_sampler=test_batch_sampler_2,
+                                             num_workers=cfg.DATASET.WORKERS,
+                                             pin_memory=True)
 
         # create network
         self.model = get_segmentation_model().to(self.device)
         logging.info(self.model)
-        
+
         # print params and flops
         if get_rank() == 0:
             try:
@@ -121,7 +122,8 @@ class Trainer(object):
             logging.info('**** Initializing mixed precision done. ****')
 
         # lr scheduling
-        self.lr_scheduler = get_scheduler(self.optimizer, max_iters=self.max_iters, iters_per_epoch=self.iters_per_epoch)
+        self.lr_scheduler = get_scheduler(self.optimizer, max_iters=self.max_iters,
+                                          iters_per_epoch=self.iters_per_epoch)
         # resume checkpoint if needed
         self.start_epoch = 0
         if args.resume and os.path.isfile(args.resume):
@@ -207,10 +209,12 @@ class Trainer(object):
 
                 if self.cur_test_mIoU > self.best_test_mIoU:
                     self.best_test_mIoU = self.cur_test_mIoU
-                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True, best_save_name='best_cs13_model.pth')
+                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True,
+                                    best_save_name='best_cs13_model.pth')
                 if self.cur_test_2_mIoU > self.best_test_2_mIoU:
                     self.best_test_2_mIoU = self.cur_test_2_mIoU
-                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True, best_save_name='best_dp13_model.pth')
+                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True,
+                                    best_save_name='best_dp13_model.pth')
 
                 self.model.train()
 
@@ -257,13 +261,13 @@ class Trainer(object):
                 output = model(image)[0]
 
             if vis:
-                vis_pred = output[0].permute(1,2,0).argmax(-1).data.cpu().numpy()
+                vis_pred = output[0].permute(1, 2, 0).argmax(-1).data.cpu().numpy()
                 vis_pred = get_color_pallete(vis_pred, dataset='cityscape13')
                 save_path = os.path.join(cfg.TRAIN.MODEL_SAVE_DIR, 'vis')
                 if not os.path.exists(save_path):
                     os.makedirs(save_path)
-                vis_pred.save(os.path.join(save_path, str(i)+'.png'))
-                print("[VIS TEST] Sample: {:d}".format(i+1))
+                vis_pred.save(os.path.join(save_path, str(i) + '.png'))
+                print("[VIS TEST] Sample: {:d}".format(i + 1))
                 continue
 
             self.metric.update(output, target)
@@ -280,7 +284,7 @@ class Trainer(object):
         for i, cls_name in enumerate(self.classes):
             table.append([cls_name, category_iou[i]])
         logging.info('Category iou: \n {}'.format(tabulate(table, headers, tablefmt='grid',
-            showindex="always", numalign='center', stralign='center')))
+                                                           showindex="always", numalign='center', stralign='center')))
 
     def test_2(self, vis=False):
         self.metric.reset()
@@ -296,13 +300,13 @@ class Trainer(object):
                 target = target.to(self.device)
                 output = model(image)[0]
                 if vis:
-                    vis_pred = output[0].permute(1,2,0).argmax(-1).data.cpu().numpy()
+                    vis_pred = output[0].permute(1, 2, 0).argmax(-1).data.cpu().numpy()
                     vis_pred = get_color_pallete(vis_pred, dataset='cityscape')
                     save_path = os.path.join(cfg.TRAIN.MODEL_SAVE_DIR, 'vis')
                     if not os.path.exists(save_path):
                         os.makedirs(save_path)
-                    vis_pred.save(os.path.join(save_path, str(i)+'.png'))
-                    print("[VIS TEST] Sample: {:d}".format(i+1))
+                    vis_pred.save(os.path.join(save_path, str(i) + '.png'))
+                    print("[VIS TEST] Sample: {:d}".format(i + 1))
                     continue
                 self.metric.update(output, target)
                 # pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
@@ -318,9 +322,10 @@ class Trainer(object):
         for i, cls_name in enumerate(self.classes):
             table.append([cls_name, category_iou[i]])
         logging.info('Category iou: \n {}'.format(tabulate(table, headers, tablefmt='grid',
-            showindex="always", numalign='center', stralign='center')))
+                                                           showindex="always", numalign='center', stralign='center')))
         torch.cuda.empty_cache()
         model.train()
+
 
 if __name__ == '__main__':
     args = parse_args()

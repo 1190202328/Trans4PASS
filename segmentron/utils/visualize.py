@@ -1,10 +1,10 @@
-import os
 import logging
+import os
+
 import numpy as np
 import torch
-
 from PIL import Image
-#from torchsummary import summary
+# from torchsummary import summary
 from thop import profile
 
 __all__ = ['get_color_pallete', 'print_iou', 'set_img_color',
@@ -35,7 +35,7 @@ def print_iou(iu, mean_pixel_acc, class_names=None, show_no_back=False):
 
 @torch.no_grad()
 def show_flops_params(model, device, input_shape=[1, 3, 512, 512]):
-    #summary(model, tuple(input_shape[1:]), device=device)
+    # summary(model, tuple(input_shape[1:]), device=device)
     input = torch.randn(*input_shape).to(torch.device(device))
     flops, params = profile(model, inputs=(input,), verbose=False)
 
@@ -119,6 +119,7 @@ def get_color_pallete(npimg, dataset='cityscape'):
         out_img.putpalette(stanford2d3dpallete)
         return out_img
 
+
 def _getvocpallete(num_cls):
     n = num_cls
     pallete = [0] * (n * 3)
@@ -196,17 +197,17 @@ trans10kv2pallete = [
     4, 250, 7]
 
 stanford2d3dpallete = [
-    0,   0,   0,
-    255,   0,  40,
-    255,  72,   0,
-    255, 185,   0,
-    205, 255,   0,
-     91, 255,   0,
-      0, 255,  21,
-      0, 255, 139,
-      0, 255, 252,
-      0, 143, 255,
-      0,  23, 255,
-     90,   0, 255,
-    204,   0, 255,
-    255,   0, 191]
+    0, 0, 0,
+    255, 0, 40,
+    255, 72, 0,
+    255, 185, 0,
+    205, 255, 0,
+    91, 255, 0,
+    0, 255, 21,
+    0, 255, 139,
+    0, 255, 252,
+    0, 143, 255,
+    0, 23, 255,
+    90, 0, 255,
+    204, 0, 255,
+    255, 0, 191]

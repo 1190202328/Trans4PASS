@@ -10,10 +10,11 @@
 
 """Synchronized Cross-GPU Batch Normalization Module"""
 import warnings
-import torch
-
-from torch.nn.modules.batchnorm import _BatchNorm
 from queue import Queue
+
+import torch
+from torch.nn.modules.batchnorm import _BatchNorm
+
 from .functions import *
 
 __all__ = ['SyncBatchNorm', 'BatchNorm1d', 'BatchNorm2d', 'BatchNorm3d']

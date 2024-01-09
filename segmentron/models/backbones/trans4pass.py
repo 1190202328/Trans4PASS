@@ -10,6 +10,7 @@ from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from segmentron.config.settings import cfg
 from .build import BACKBONE_REGISTRY
 
+
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
         super().__init__()
@@ -149,6 +150,7 @@ class Block(nn.Module):
 
         return x
 
+
 class StackDilatedPatchEmbed(nn.Module):
     r""" Image to Patch Embedding
     Args:
@@ -169,8 +171,8 @@ class StackDilatedPatchEmbed(nn.Module):
         self.in_chans = in_chans
         self.embed_dim = embed_dim
         padding = (patch_size[0] // 2, patch_size[1] // 2)
-        padding = (padding[0] + (padding[0]+1) // 2, padding[1] + (padding[1]+1) // 2)
-        self.projs = nn.ModuleList([nn.Conv2d(in_chans, embed_dim//2, kernel_size=patch_size, stride=stride,
+        padding = (padding[0] + (padding[0] + 1) // 2, padding[1] + (padding[1] + 1) // 2)
+        self.projs = nn.ModuleList([nn.Conv2d(in_chans, embed_dim // 2, kernel_size=patch_size, stride=stride,
                                               padding=(patch_size[0] // 2, patch_size[1] // 2)),
                                     nn.Conv2d(in_chans, embed_dim // 2, kernel_size=patch_size, stride=stride,
                                               padding=padding, dilation=dilate[1])])
@@ -209,6 +211,7 @@ class StackDilatedPatchEmbed(nn.Module):
 class OverlapPatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
+
     def __init__(self, img_size=224, patch_size=7, stride=4, in_chans=3, embed_dim=768, use_dcn=False):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -223,7 +226,7 @@ class OverlapPatchEmbed(nn.Module):
         self.num_patches = self.H * self.W
         self.use_dcn = use_dcn
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
-                          padding=(patch_size[0] // 2, patch_size[1] // 2))
+                              padding=(patch_size[0] // 2, patch_size[1] // 2))
         self.apply(self._init_weights)
         if use_dcn:
             self.offset_conv = nn.Conv2d(in_chans,
@@ -282,6 +285,7 @@ class OverlapPatchEmbed(nn.Module):
                                           )
         return x
 
+
 class Trans4PASS_Backbone(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 320, 512],
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
@@ -293,7 +297,7 @@ class Trans4PASS_Backbone(nn.Module):
 
         img_size = img_size[-1] if isinstance(img_size, tuple) else img_size
         self.patch_embed1 = OverlapPatchEmbed(img_size=img_size, patch_size=7, stride=4, in_chans=in_chans,
-                                               embed_dim=embed_dims[0], use_dcn=cfg.MODEL.USE_DCN[0])
+                                              embed_dim=embed_dims[0], use_dcn=cfg.MODEL.USE_DCN[0])
         self.patch_embed2 = OverlapPatchEmbed(img_size=img_size // 4, patch_size=3, stride=2, in_chans=embed_dims[0],
                                               embed_dim=embed_dims[1], use_dcn=cfg.MODEL.USE_DCN[1])
         self.patch_embed3 = OverlapPatchEmbed(img_size=img_size // 8, patch_size=3, stride=2, in_chans=embed_dims[1],
@@ -449,14 +453,14 @@ class DWConv(nn.Module):
 @BACKBONE_REGISTRY.register()
 def trans4pass_v1(*args):
     return Trans4PASS_Backbone(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
-            drop_rate=0.0, drop_path_rate=0.1)
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
+        qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
+        drop_rate=0.0, drop_path_rate=0.1)
 
 
 @BACKBONE_REGISTRY.register()
 def trans4pass_v2(*args):
     return Trans4PASS_Backbone(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            drop_rate=0.0, drop_path_rate=0.1)
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
+        qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+        drop_rate=0.0, drop_path_rate=0.1)

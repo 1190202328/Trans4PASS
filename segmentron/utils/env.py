@@ -1,10 +1,11 @@
 # this code heavily based on detectron2
 
 import logging
-import numpy as np
 import os
 import random
 from datetime import datetime
+
+import numpy as np
 import torch
 
 __all__ = ["seed_all_rng"]
@@ -19,9 +20,9 @@ def seed_all_rng(seed=None):
     """
     if seed is None:
         seed = (
-            os.getpid()
-            + int(datetime.now().strftime("%S%f"))
-            + int.from_bytes(os.urandom(2), "big")
+                os.getpid()
+                + int(datetime.now().strftime("%S%f"))
+                + int.from_bytes(os.urandom(2), "big")
         )
         logger = logging.getLogger(__name__)
         logger.info("Using a generated random seed {}".format(seed))

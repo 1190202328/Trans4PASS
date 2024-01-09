@@ -1,7 +1,7 @@
 from .build import BACKBONE_REGISTRY, get_segmentation_backbone
-from .xception import *
+from .eespnet import *
+from .hrnet import *
 from .mobilenet import *
 from .resnet import *
-from .hrnet import *
-from .eespnet import *
 from .trans4pass import *
+from .xception import *

@@ -1,7 +1,8 @@
 import logging
+from collections import OrderedDict
+
 import torch
 
-from collections import OrderedDict
 from segmentron.utils.registry import Registry
 from ..config import cfg
 

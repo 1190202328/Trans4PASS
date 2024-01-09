@@ -1,9 +1,11 @@
-import numpy as np
 import argparse
 import json
-from PIL import Image
 from os.path import join
+
+import numpy as np
 import torch
+from PIL import Image
+
 
 def fast_hist(a, b, n):
     k = (a >= 0) & (a < n)
@@ -13,7 +15,9 @@ def fast_hist(a, b, n):
 def per_class_iu(hist):
     return np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
 
+
 EPS = 1e-10
+
 
 def per_class_acc(hist):
     correct_per_class = np.diag(hist)
@@ -21,6 +25,7 @@ def per_class_acc(hist):
     per_class_acc = correct_per_class / (total_per_class + EPS)
     avg_per_class_acc = np.nanmean(per_class_acc)
     return avg_per_class_acc
+
 
 def m_acc(hist):
     correct = np.diag(hist).sum()
@@ -41,7 +46,7 @@ def compute_mIoU(gt_dir, pred_dir, devkit_dir='', silence=False):
     Compute IoU given the predicted colorized images and 
     """
     with open(join(devkit_dir, 'info.json'), 'r') as fp:
-      info = json.load(fp)
+        info = json.load(fp)
     num_classes = np.int(info['classes'])
     print('Num classes', num_classes)
     name_classes = np.array(info['label'], dtype=np.str)
@@ -64,12 +69,14 @@ def compute_mIoU(gt_dir, pred_dir, devkit_dir='', silence=False):
         label = np.array(label)
         label = label_mapping(label, mapping)
         if len(label.flatten()) != len(pred.flatten()):
-            print('Skipping: len(gt) = {:d}, len(pred) = {:d}, {:s}, {:s}'.format(len(label.flatten()), len(pred.flatten()), gt_imgs[ind], pred_imgs[ind]))
+            print('Skipping: len(gt) = {:d}, len(pred) = {:d}, {:s}, {:s}'.format(len(label.flatten()),
+                                                                                  len(pred.flatten()), gt_imgs[ind],
+                                                                                  pred_imgs[ind]))
             continue
         hist += fast_hist(label.flatten(), pred.flatten(), num_classes)
         if ind > 0 and ind % 10 == 0:
-            print('{:d} / {:d}: {:0.2f}'.format(ind, len(gt_imgs), 100*np.mean(per_class_iu(hist))))
-    
+            print('{:d} / {:d}: {:0.2f}'.format(ind, len(gt_imgs), 100 * np.mean(per_class_iu(hist))))
+
     mIoUs = per_class_iu(hist)
     if not silence:
         for ind_class in range(num_classes):
@@ -79,7 +86,7 @@ def compute_mIoU(gt_dir, pred_dir, devkit_dir='', silence=False):
 
 
 def main(args):
-   compute_mIoU(args.gt_dir, args.pred_dir, args.devkit_dir)
+    compute_mIoU(args.gt_dir, args.pred_dir, args.devkit_dir)
 
 
 class iouEval:
@@ -95,7 +102,7 @@ class iouEval:
         self.fp = torch.zeros(classes).double()
         self.fn = torch.zeros(classes).double()
 
-    def addBatch(self, x, y): 
+    def addBatch(self, x, y):
 
         if (x.is_cuda or y.is_cuda):
             x = x.cuda()
@@ -127,7 +134,7 @@ class iouEval:
         tp = torch.sum(torch.sum(torch.sum(tpmult, dim=0, keepdim=True), dim=2, keepdim=True), dim=3,
                        keepdim=True).squeeze()
         fpmult = x_onehot * (
-                    1 - y_onehot - ignores)  # times prediction says its that class and gt says its not (subtracting cases when its ignore label!)
+                1 - y_onehot - ignores)  # times prediction says its that class and gt says its not (subtracting cases when its ignore label!)
         fp = torch.sum(torch.sum(torch.sum(fpmult, dim=0, keepdim=True), dim=2, keepdim=True), dim=3,
                        keepdim=True).squeeze()
         fnmult = (1 - x_onehot) * (y_onehot)  # times prediction says its not that class and gt says it is
@@ -143,17 +150,20 @@ class iouEval:
         den = self.tp + self.fp + self.fn + 1e-15
         iou = num / den
         return torch.mean(iou), iou  # returns "iou mean", "iou per class"
+
+
 # Class for colors
 class colors:
-    RED       = '\033[31;1m'
-    GREEN     = '\033[32;1m'
-    YELLOW    = '\033[33;1m'
-    BLUE      = '\033[34;1m'
-    MAGENTA   = '\033[35;1m'
-    CYAN      = '\033[36;1m'
-    BOLD      = '\033[1m'
+    RED = '\033[31;1m'
+    GREEN = '\033[32;1m'
+    YELLOW = '\033[33;1m'
+    BLUE = '\033[34;1m'
+    MAGENTA = '\033[35;1m'
+    CYAN = '\033[36;1m'
+    BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-    ENDC      = '\033[0m'
+    ENDC = '\033[0m'
+
 
 # Colored value output if colorized flag is activated.
 def getColorEntry(val):
@@ -190,6 +200,7 @@ class SegmentationMetric(object):
         preds : 'NumpyArray' or list of `NumpyArray`
             Predicted values.
         """
+
         def evaluate_worker(self, pred, label):
             correct, labeled = batch_pix_accuracy(pred, label)
             inter, union = batch_intersection_union(pred, label, self.nclass)
@@ -237,8 +248,8 @@ def batch_pix_accuracy(output, target):
     predict = torch.argmax(output.long(), 1) + 1
     target = target.long() + 1
 
-    pixel_labeled = torch.sum(target > 0)#.item()
-    pixel_correct = torch.sum((predict == target) * (target > 0))#.item()
+    pixel_labeled = torch.sum(target > 0)  # .item()
+    pixel_correct = torch.sum((predict == target) * (target > 0))  # .item()
     assert pixel_correct <= pixel_labeled, "Correct area should be smaller than Labeled"
     return pixel_correct, pixel_labeled
 

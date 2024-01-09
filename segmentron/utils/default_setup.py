@@ -1,12 +1,14 @@
-import os
-import logging
 import json
+import logging
+import os
+
 import torch
 
 from .distributed import get_rank, synchronize
-from .logger import setup_logger
 from .env import seed_all_rng
+from .logger import setup_logger
 from ..config import cfg
+
 
 def default_setup(args):
     num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1

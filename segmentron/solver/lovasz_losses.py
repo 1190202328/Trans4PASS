@@ -6,10 +6,10 @@ https://github.com/bermanmaxim/LovaszSoftmax/blob/master/pytorch/lovasz_losses.p
 
 from __future__ import print_function, division
 
-import torch
-from torch.autograd import Variable
-import torch.nn.functional as F
 import numpy as np
+import torch
+import torch.nn.functional as F
+from torch.autograd import Variable
 
 try:
     from itertools import ifilterfalse

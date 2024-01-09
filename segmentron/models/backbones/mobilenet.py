@@ -2,8 +2,8 @@
 import torch.nn as nn
 
 from .build import BACKBONE_REGISTRY
-from ...modules import _ConvBNReLU, _DepthwiseConv, InvertedResidual
 from ...config import cfg
+from ...modules import _ConvBNReLU, _DepthwiseConv, InvertedResidual
 
 __all__ = ['MobileNet', 'MobileNetV2']
 
@@ -151,4 +151,3 @@ def mobilenet_v1(norm_layer=nn.BatchNorm2d):
 @BACKBONE_REGISTRY.register()
 def mobilenet_v2(norm_layer=nn.BatchNorm2d):
     return MobileNetV2(norm_layer=norm_layer)
-

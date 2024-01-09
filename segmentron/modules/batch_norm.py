@@ -1,9 +1,11 @@
 # this code heavily based on detectron2
 import logging
+
 import torch
 import torch.distributed as dist
 from torch import nn
 from torch.autograd.function import Function
+
 from ..utils.distributed import get_world_size
 
 
@@ -46,7 +48,7 @@ class FrozenBatchNorm2d(nn.Module):
         return x * scale + bias
 
     def _load_from_state_dict(
-        self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+            self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
     ):
         version = local_metadata.get("version", None)
 
@@ -118,7 +120,7 @@ def get_norm(norm):
     """
     support_norm_type = ['BN', 'SyncBN', 'FrozenBN', 'GN', 'nnSyncBN']
     assert norm in support_norm_type, 'Unknown norm type {}, support norm types are {}'.format(
-                                                                        norm, support_norm_type)
+        norm, support_norm_type)
     if isinstance(norm, str):
         if len(norm) == 0:
             return None

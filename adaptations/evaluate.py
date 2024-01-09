@@ -1,29 +1,22 @@
 import argparse
-import scipy
-from scipy import ndimage
-import numpy as np
+import os
 import sys
-from packaging import version
 
-import os, sys
+import numpy as np
+
 os.chdir(sys.path[0])
 import torch
-from torch.autograd import Variable
-import torchvision.models as models
-import torch.nn.functional as F
-from torch.utils import data, model_zoo
+from torch.utils import data
 from model.trans4pass import Trans4PASS_v1, Trans4PASS_v2
-from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
-from dataset.cs_dataset_src import CSSrcDataSet
+from dataset.densepass_dataset import densepassTestDataSet
 from torchvision import transforms
 from compute_iou import fast_hist, per_class_iu
 
-from collections import OrderedDict
 from PIL import Image
 
-import matplotlib.pyplot as plt
 import torch.nn as nn
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
+
+IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 SOURCE_NAME = 'CS'
 TARGET_NAME = 'DensePASS'
 MODEL = 'Trans4PASS_v1'
@@ -43,7 +36,6 @@ palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153,
            220, 220, 0, 107, 142, 35, 152, 251, 152, 70, 130, 180, 220, 20, 60, 255, 0, 0, 0, 0, 142, 0, 0, 70,
            0, 60, 100, 0, 80, 100, 0, 0, 230, 119, 11, 32]
 zero_pad = 256 * 3 - len(palette)
-
 
 NAME_CLASSES = [
     "road",
@@ -76,6 +68,7 @@ def colorize_mask(mask):
     new_mask.putpalette(palette)
 
     return new_mask
+
 
 def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLab-ResNet Network")
@@ -139,12 +132,12 @@ def main():
     interp = nn.Upsample(size=(h, w), mode='bilinear', align_corners=True)
     for index, batch in enumerate(testloader):
         if index % 100 == 0:
-            print ('%d processd' % index)
+            print('%d processd' % index)
         image, label, _, name = batch
         image = image.cuda(gpu0)
         b, _, _, _ = image.shape
         output_temp = torch.zeros((b, NUM_CLASSES, h, w), dtype=image.dtype).cuda(gpu0)
-        scales = [1] #[0.5,0.75,1.0,1.25,1.5,1.75] # ms
+        scales = [1]  # [0.5,0.75,1.0,1.25,1.5,1.75] # ms
         for sc in scales:
             new_h, new_w = int(sc * h), int(sc * w)
             img_tem = nn.UpsamplingBilinear2d(size=(new_h, new_w))(image)
@@ -164,7 +157,6 @@ def main():
             name = name[0].split('/')[-1]
             output.save('%s/%s' % (args.save, name))
             output_col.save('%s/%s_color.png' % (args.save, name.split('.')[0]))
-
 
     mIoUs = per_class_iu(hist)
     for ind_class in range(args.num_classes):

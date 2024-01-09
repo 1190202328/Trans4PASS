@@ -1,25 +1,23 @@
-import os
 import os.path as osp
-import numpy as np
-import random
+
 import matplotlib.pyplot as plt
-import collections
+import numpy as np
 import torch
 import torchvision
-from torch.utils import data
 from PIL import Image
+from torch.utils import data
 from torchvision import transforms
 
 
 class CS13SrcDataSet(data.Dataset):
-    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), 
-                scale=True, mirror=True, ignore_label=255, set='val'):
+    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128),
+                 scale=True, mirror=True, ignore_label=255, set='val'):
         self.root = root
         self.list_path = list_path
         self.crop_size = crop_size
         self.set = set
         self.img_ids = [i_id.strip() for i_id in open(list_path)]
-        if not max_iters==None:
+        if not max_iters == None:
             self.img_ids = self.img_ids * int(np.ceil(float(max_iters) / len(self.img_ids)))
         self.files = []
 
@@ -35,11 +33,11 @@ class CS13SrcDataSet(data.Dataset):
         # self._key = np.array([0,1,2,3,4,5,6,7,8,9,10,11,11,12,12,12,255,12,12])
 
         self._key = np.array([255, 255, 255, 255, 255,
-                             255, 255, 0, 1, 255, 255,
-                             2, 3, 4, 255, 255, 255,
-                             5, 255, 6, 7, 8, 9,
-                             10, 11, 11, 12, 12, 12,
-                             255, 255, 255, 12, 12])
+                              255, 255, 0, 1, 255, 255,
+                              2, 3, 4, 255, 255, 255,
+                              5, 255, 6, 7, 8, 9,
+                              10, 11, 11, 12, 12, 12,
+                              255, 255, 255, 12, 12])
 
     def __len__(self):
         return len(self.files)
@@ -49,10 +47,10 @@ class CS13SrcDataSet(data.Dataset):
         new_mask = np.ones_like(mask) * 255
         # new_mask -= 1
         for value in values:
-            if value == 255: 
-                new_mask[mask==value] = 255
+            if value == 255:
+                new_mask[mask == value] = 255
             else:
-                new_mask[mask==value] = self._key[value]
+                new_mask[mask == value] = self._key[value]
         mask = new_mask
         return mask
 

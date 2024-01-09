@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 EPSILON = 1e-5
 
+
 def transpose(x):
     return x.transpose(-2, -1)
 
@@ -21,12 +22,16 @@ def log_trace(x):
 def log_det(x):
     return torch.logdet(x)
 
+
 def kd_loss(feats, select_feat_self):
     T = 100
     alpha = 0.9
     loss_kl_self = nn.KLDivLoss()(
         F.log_softmax(feats / T, dim=1),
-        F.softmax(select_feat_self / T, dim=1)) * (alpha * T * T) + F.cross_entropy(feats, torch.argmax(select_feat_self, dim=1).long()) * (1. - alpha)
+        F.softmax(select_feat_self / T, dim=1)) * (alpha * T * T) + F.cross_entropy(feats,
+                                                                                    torch.argmax(select_feat_self,
+                                                                                                 dim=1).long()) * (
+                               1. - alpha)
     return loss_kl_self
 
 
@@ -62,7 +67,8 @@ def feat_kl_loss(feats, labels, feats_mem):
     alpha = 0.9
     loss_kl = nn.KLDivLoss()(
         F.log_softmax(feats / T, dim=1),
-        F.softmax(select_feat / T, dim=1)) * (alpha * T * T) + F.cross_entropy(feats, torch.argmax(select_feat, dim=1).long()) * (1. - alpha)
-
+        F.softmax(select_feat / T, dim=1)) * (alpha * T * T) + F.cross_entropy(feats, torch.argmax(select_feat,
+                                                                                                   dim=1).long()) * (
+                          1. - alpha)
 
     return loss_kl, batch_feats_mem, select_feat

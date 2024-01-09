@@ -1,30 +1,26 @@
-import glob
-import shutil
-
-import torch
-import torch.nn as nn
-from torch.utils import data, model_zoo
-import numpy as np
-from torch.autograd import Variable
-import torch.optim as optim
-
-import torch.backends.cudnn as cudnn
-import torch.nn.functional as F
-import logging, sys
-import time
-from tensorboardX import SummaryWriter
-from model.trans4pass import Trans4PASS_v1, Trans4PASS_v2
-from model.discriminator import FCDiscriminator
-from dataset.cs_dataset_src import CSSrcDataSet
-from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
-from compute_iou import compute_mIoU
 import argparse
+import glob
+import logging
 import os
 import os.path as osp
-from PIL import Image
-from torchvision import transforms
-from compute_iou import fast_hist, per_class_iu
+import shutil
+import sys
 
+import numpy as np
+import torch
+import torch.backends.cudnn as cudnn
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from tensorboardX import SummaryWriter
+from torch.autograd import Variable
+from torch.utils import data
+
+from compute_iou import fast_hist, per_class_iu
+from dataset.cs_dataset_src import CSSrcDataSet
+from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
+from model.discriminator import FCDiscriminator
+from model.trans4pass import Trans4PASS_v1, Trans4PASS_v2
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
@@ -44,13 +40,13 @@ DATA_LIST_PATH_TARGET = 'dataset/densepass_list/train.txt'
 SSL_DIR = './pseudo_{}_{}_ms'.format(TARGET_NAME, MODEL)
 DATA_LIST_PATH_TARGET_TEST = 'dataset/densepass_list/val.txt'
 INPUT_SIZE_TARGET = '2048,400'
-TARGET_TRANSFORM = 'FixScaleRandomCropWH' 
+TARGET_TRANSFORM = 'FixScaleRandomCropWH'
 INPUT_SIZE_TARGET_TEST = '2048,400'
 LEARNING_RATE = 2.5e-6
 MOMENTUM = 0.9
 NUM_CLASSES = 19
 NUM_STEPS = 100000
-NUM_STEPS_STOP = 80000 # early stopping
+NUM_STEPS_STOP = 80000  # early stopping
 NUM_PROTOTYPE = 50
 POWER = 0.9
 RANDOM_SEED = 1234
@@ -90,6 +86,7 @@ NAME_CLASSES = [
     "train",
     "motocycle",
     "bicycle"]
+
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -176,7 +173,9 @@ def get_arguments():
                         help="Path to save result.")
     return parser.parse_args()
 
+
 args = get_arguments()
+
 
 def setup_logger(name, save_dir, filename="log.txt", mode='w'):
     logging.root.name = name
@@ -196,7 +195,9 @@ def setup_logger(name, save_dir, filename="log.txt", mode='w'):
     ch.setFormatter(formatter)
     logging.root.addHandler(ch)
 
+
 setup_logger('Trans4PASS', SNAPSHOT_DIR)
+
 
 def lr_poly(base_lr, iter, max_iter, power):
     return base_lr * ((1 - float(iter) / max_iter) ** (power))
@@ -232,6 +233,7 @@ def load_my_state_dict(model, state_dict):  # custom function to load model when
         else:
             own_state[name].copy_(param)
     return model
+
 
 def main():
     """Create the model and start the training."""
@@ -291,13 +293,16 @@ def main():
 
     # init data loader
     trainset = CSSrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
-                            crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set)
+                            crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN,
+                            set=args.set)
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                   pin_memory=True)
     trainloader_iter = enumerate(trainloader)
     # --- SSL_DIR
-    targetset = densepassDataSet(args.data_dir_target, args.data_list_target, max_iters=args.num_steps * args.iter_size * args.batch_size,
-                                 crop_size=input_size_target, scale=False, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set,
+    targetset = densepassDataSet(args.data_dir_target, args.data_list_target,
+                                 max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                 crop_size=input_size_target, scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
+                                 set=args.set,
                                  ssl_dir=SSL_DIR, trans=TARGET_TRANSFORM)
     targetloader = data.DataLoader(targetset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                    pin_memory=True)
@@ -349,7 +354,6 @@ def main():
     seg_loss_target = torch.nn.CrossEntropyLoss(ignore_index=255)
     # L1_loss = torch.nn.L1Loss(reduction='none')
 
-
     interp = nn.Upsample(size=(input_size[1], input_size[0]), mode='bilinear', align_corners=True)
     interp_target = nn.Upsample(size=(input_size_target[1], input_size_target[0]), mode='bilinear', align_corners=True)
     # test_interp = nn.Upsample(size=(1024, 2048), mode='bilinear', align_corners=True)
@@ -363,7 +367,6 @@ def main():
         if not os.path.exists(args.log_dir):
             os.makedirs(args.log_dir)
         writer = SummaryWriter(args.log_dir)
-
 
     # start training
     for i_iter in range(Iter, args.num_steps):
@@ -461,7 +464,7 @@ def main():
                     writer.add_scalar(key, val, i_iter)
         if i_iter % 10 == 0:
             logging.info('iter={0:8d}/{1:8d}, l_seg={2:.3f}, l_seg_t={5:.3f}, l_adv={3:.3f} l_D={4:.3f}'.format(
-                  i_iter, args.num_steps, loss_seg_value, loss_adv_target_value, loss_D_value, loss_seg_value_t))
+                i_iter, args.num_steps, loss_seg_value, loss_adv_target_value, loss_D_value, loss_seg_value_t))
 
         if i_iter >= args.num_steps_stop - 1:
             logging.info('save model ...')
@@ -481,7 +484,7 @@ def main():
                     output1, output2 = model(Variable(image).to(device))
                 # output = test_interp(output2).cpu().data[0].numpy()
                 output = output2.cpu().data[0].numpy()
-                output = output.transpose(1,2,0)
+                output = output.transpose(1, 2, 0)
                 output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
                 label = label.cpu().data[0].numpy()
                 hist += fast_hist(label.flatten(), output.flatten(), args.num_classes)

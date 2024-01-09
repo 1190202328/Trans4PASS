@@ -1,25 +1,23 @@
-import os
 import os.path as osp
-import numpy as np
-import random
+
 import matplotlib.pyplot as plt
-import collections
+import numpy as np
 import torch
 import torchvision
-from torch.utils import data
 from PIL import Image
+from torch.utils import data
 from torchvision import transforms
 
 
 class CSSrcDataSet(data.Dataset):
-    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), 
-                scale=True, mirror=True, ignore_label=255, set='val'):
+    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128),
+                 scale=True, mirror=True, ignore_label=255, set='val'):
         self.root = root
         self.list_path = list_path
         self.crop_size = crop_size
         self.set = set
         self.img_ids = [i_id.strip() for i_id in open(list_path)]
-        if not max_iters==None:
+        if not max_iters == None:
             self.img_ids = self.img_ids * int(np.ceil(float(max_iters) / len(self.img_ids)))
         self.files = []
 
@@ -35,7 +33,6 @@ class CSSrcDataSet(data.Dataset):
 
     def __len__(self):
         return len(self.files)
-
 
     def __getitem__(self, index):
         datafiles = self.files[index]

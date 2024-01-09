@@ -1,12 +1,14 @@
-import os
-import torch
 import logging
+import os
+from collections import OrderedDict
+
+import torch
 import torch.utils.model_zoo as model_zoo
 
+from ...config import cfg
 from ...utils.download import download
 from ...utils.registry import Registry
-from ...config import cfg
-from collections import OrderedDict
+
 BACKBONE_REGISTRY = Registry("BACKBONE")
 BACKBONE_REGISTRY.__doc__ = """
 Registry for backbone, i.e. resnet.
@@ -60,11 +62,11 @@ def load_backbone_pretrained(model, backbone):
             except Exception as e:
                 logging.warning(e)
                 logging.info('Use torch download failed, try custom method!')
-                
-                msg = model.load_state_dict(torch.load(download(model_urls[backbone], 
-                        path=os.path.join(torch.hub._get_torch_home(), 'checkpoints'))), strict=False)
-            logging.info(msg)
 
+                msg = model.load_state_dict(torch.load(download(model_urls[backbone],
+                                                                path=os.path.join(torch.hub._get_torch_home(),
+                                                                                  'checkpoints'))), strict=False)
+            logging.info(msg)
 
 
 def get_segmentation_backbone(backbone, norm_layer=torch.nn.BatchNorm2d):

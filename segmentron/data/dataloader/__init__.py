@@ -4,15 +4,15 @@ This module provides data loaders and transformers for popular vision datasets.
 # from .mscoco import COCOSegmentation
 from .cityscapes import CitySegmentation
 from .cityscapes13 import City13Segmentation
-from .stanford2d3d import Stanford2d3dSegmentation
-from .stanford2d3d_pan import Stanford2d3dPanSegmentation
 from .densepass import DensePASSSegmentation
 from .densepass13 import DensePASS13Segmentation
-from .synpass13 import SynPASS13Segmentation
-from .synpass import SynPASSSegmentation
+from .stanford2d3d import Stanford2d3dSegmentation
 from .stanford2d3d8 import Stanford2d3d8Segmentation
+from .stanford2d3d_pan import Stanford2d3dPanSegmentation
 from .stanford2d3d_pan8 import Stanford2d3dPan8Segmentation
 from .structured3d8 import Structured3d8Segmentation
+from .synpass import SynPASSSegmentation
+from .synpass13 import SynPASS13Segmentation
 
 datasets = {
     'cityscape': CitySegmentation,

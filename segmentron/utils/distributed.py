@@ -3,10 +3,10 @@ code is heavily based on https://github.com/facebookresearch/maskrcnn-benchmark
 """
 import math
 import pickle
-import torch
-import torch.utils.data as data
-import torch.distributed as dist
 
+import torch
+import torch.distributed as dist
+import torch.utils.data as data
 from torch.utils.data.sampler import Sampler, BatchSampler
 
 __all__ = ['get_world_size', 'get_rank', 'synchronize', 'is_main_process',

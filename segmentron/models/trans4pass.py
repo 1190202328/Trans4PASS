@@ -1,7 +1,8 @@
 import torch.nn.functional as F
+
+from segmentron.config import cfg
 from segmentron.models.model_zoo import MODEL_REGISTRY
 from segmentron.models.segbase import SegBaseModel
-from segmentron.config import cfg
 # TODO 重要！！！
 # # --- dmlpv1
 # from segmentron.modules.dmlp import DMLP
@@ -24,7 +25,6 @@ class Trans4PASS(SegBaseModel):
         self.dede_head = DMLP(vit_params)
         self.__setattr__('decoder', ['dede_head'])
 
-
     def forward(self, x):
         size = x.size()[2:]
         c1, c2, c3, c4 = self.encoder(x)
@@ -36,4 +36,3 @@ class Trans4PASS(SegBaseModel):
 
         outputs.append(x)
         return tuple(outputs)
-

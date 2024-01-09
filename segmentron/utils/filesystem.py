@@ -11,7 +11,8 @@ import torch
 from ..config import cfg
 
 
-def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_best=False, best_save_name='best_model.pth'):
+def save_checkpoint(args, model, epoch, optimizer=None, lr_scheduler=None, is_best=False,
+                    best_save_name='best_model.pth'):
     """Save Checkpoint"""
     directory = os.path.expanduser(cfg.TRAIN.MODEL_SAVE_DIR)
     if not os.path.exists(directory):

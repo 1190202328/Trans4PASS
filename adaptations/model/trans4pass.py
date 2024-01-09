@@ -1,15 +1,15 @@
 import math
+from functools import partial
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from mmcv.runner import load_checkpoint
+from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from torch import Tensor
 from torch.nn import init
 from torch.nn.modules.utils import _pair
-from functools import partial
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from mmcv.runner import load_checkpoint
 
 
 class Trans4PASS(nn.Module):
@@ -44,7 +44,7 @@ class Trans4PASS(nn.Module):
         size = x.size()[2:]
         c1, c2, c3, c4 = self.encoder(x)
         x_feats = [c1, c2, c3, c4]
-        x_feats_de, x  = self.dede_head(c1, c2, c3, c4)
+        x_feats_de, x = self.dede_head(c1, c2, c3, c4)
         x_out = F.interpolate(x, size, mode='bilinear', align_corners=True)
         # return x_feats, x_out
         return x_feats_de, x_out
@@ -221,6 +221,7 @@ class Block(nn.Module):
 
         return x
 
+
 class StackDilatedPatchEmbed(nn.Module):
     r""" Image to Patch Embedding
     Args:
@@ -241,8 +242,8 @@ class StackDilatedPatchEmbed(nn.Module):
         self.in_chans = in_chans
         self.embed_dim = embed_dim
         padding = (patch_size[0] // 2, patch_size[1] // 2)
-        padding = (padding[0] + (padding[0]+1) // 2, padding[1] + (padding[1]+1) // 2)
-        self.projs = nn.ModuleList([nn.Conv2d(in_chans, embed_dim//2, kernel_size=patch_size, stride=stride,
+        padding = (padding[0] + (padding[0] + 1) // 2, padding[1] + (padding[1] + 1) // 2)
+        self.projs = nn.ModuleList([nn.Conv2d(in_chans, embed_dim // 2, kernel_size=patch_size, stride=stride,
                                               padding=(patch_size[0] // 2, patch_size[1] // 2)),
                                     nn.Conv2d(in_chans, embed_dim // 2, kernel_size=patch_size, stride=stride,
                                               padding=padding, dilation=dilate[1])])
@@ -284,6 +285,7 @@ class StackDilatedPatchEmbed(nn.Module):
 class OverlapPatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
+
     def __init__(self, img_size=224, patch_size=7, stride=4, in_chans=3, embed_dim=768, use_dcn=False):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -299,7 +301,7 @@ class OverlapPatchEmbed(nn.Module):
         self.use_dcn = use_dcn
         # ==== define as same name, in order to load self.proj.
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
-                          padding=(patch_size[0] // 2, patch_size[1] // 2))
+                              padding=(patch_size[0] // 2, patch_size[1] // 2))
         self.apply(self._init_weights)
         if use_dcn:
             self.offset_conv = nn.Conv2d(in_chans,
@@ -526,16 +528,16 @@ class DWConv(nn.Module):
 
 def trans4pass_v1(*args):
     return Trans4PASS_Backbone(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
-            drop_rate=0.0, drop_path_rate=0.1)
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
+        qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
+        drop_rate=0.0, drop_path_rate=0.1)
 
 
 def trans4pass_v2(*args):
     return Trans4PASS_Backbone(
-            patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
-            qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-            drop_rate=0.0, drop_path_rate=0.1)
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
+        qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
+        drop_rate=0.0, drop_path_rate=0.1)
 
 
 class DWConv2d(nn.Module):
@@ -552,10 +554,10 @@ class DWConv2d(nn.Module):
         return self.pointwise(self.depthwise(x))
 
 
-
 class DeformableProjEmbed(nn.Module):
     """ feature map to Projected Embedding
     """
+
     def __init__(self, in_chans=512, emb_chans=128):
         super().__init__()
         self.kernel_size = kernel_size = 3
@@ -569,7 +571,7 @@ class DeformableProjEmbed(nn.Module):
         nn.init.constant_(self.offset_conv.weight, 0.)
         nn.init.constant_(self.offset_conv.bias, 0.)
         self.modulator_conv = nn.Conv2d(in_chans, 1 * kernel_size * kernel_size, kernel_size=kernel_size,
-                                     stride=stride, padding=padding)
+                                        stride=stride, padding=padding)
         nn.init.constant_(self.modulator_conv.weight, 0.)
         nn.init.constant_(self.modulator_conv.bias, 0.)
         self.norm = nn.BatchNorm2d(emb_chans)
@@ -598,15 +600,15 @@ class DeformableProjEmbed(nn.Module):
 
 class DeformableMLP(nn.Module):
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size,
-        stride: int = 1,
-        padding: int = 0,
-        dilation: int = 1,
-        groups: int = 1,
-        bias: bool = True,
+            self,
+            in_channels: int,
+            out_channels: int,
+            kernel_size,
+            stride: int = 1,
+            padding: int = 0,
+            dilation: int = 1,
+            groups: int = 1,
+            bias: bool = True,
     ):
         super(DeformableMLP, self).__init__()
 
@@ -719,7 +721,7 @@ class DMLP(nn.Module):
 
     def forward(self, c1, c2, c3, c4):
         size = c1.size()[2:]
-        c4 = self.head4(c4) # shape: B, 128, H/4, W/4
+        c4 = self.head4(c4)  # shape: B, 128, H/4, W/4
         c4 = F.interpolate(c4, size, mode='bilinear', align_corners=True)
 
         c3 = self.head3(c3)
@@ -738,6 +740,7 @@ class DMLP(nn.Module):
 def Trans4PASS_v1(num_classes=19, emb_chans=128):
     model = Trans4PASS(num_classes, emb_chans)
     return model
+
 
 def Trans4PASS_v2(num_classes=19, emb_chans=128):
     model = Trans4PASS(num_classes, emb_chans, encoder='trans4pass_v2')

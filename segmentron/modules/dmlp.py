@@ -1,11 +1,9 @@
 import math
-from functools import partial
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from timm.models.layers import trunc_normal_
 from torch import Tensor
 from torch.nn import init
 from torch.nn.modules.utils import _pair
@@ -28,6 +26,7 @@ class DWConv2d(nn.Module):
 class DeformableProjEmbed(nn.Module):
     """ feature map to Projected Embedding
     """
+
     def __init__(self, in_chans=512, emb_chans=128):
         super().__init__()
         self.kernel_size = kernel_size = 3
@@ -40,7 +39,7 @@ class DeformableProjEmbed(nn.Module):
         nn.init.constant_(self.offset_conv.weight, 0.)
         nn.init.constant_(self.offset_conv.bias, 0.)
         self.modulator_conv = nn.Conv2d(in_chans, 1 * kernel_size * kernel_size, kernel_size=kernel_size,
-                                     stride=stride, padding=padding)
+                                        stride=stride, padding=padding)
         nn.init.constant_(self.modulator_conv.weight, 0.)
         nn.init.constant_(self.modulator_conv.bias, 0.)
         self.norm = nn.BatchNorm2d(emb_chans)
@@ -69,15 +68,15 @@ class DeformableProjEmbed(nn.Module):
 
 class DeformableMLP(nn.Module):
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size,
-        stride: int = 1,
-        padding: int = 0,
-        dilation: int = 1,
-        groups: int = 1,
-        bias: bool = True,
+            self,
+            in_channels: int,
+            out_channels: int,
+            kernel_size,
+            stride: int = 1,
+            padding: int = 0,
+            dilation: int = 1,
+            groups: int = 1,
+            bias: bool = True,
     ):
         super(DeformableMLP, self).__init__()
 
@@ -204,4 +203,3 @@ class DMLP(nn.Module):
         out = c1 + c2 + c3 + c4
         out = self.pred(out)
         return out
-

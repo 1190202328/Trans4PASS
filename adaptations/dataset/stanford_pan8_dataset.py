@@ -1,21 +1,20 @@
-import os
+import glob
 import json
+import os
 import os.path as osp
-import torch
-from torchvision import transforms
+
 import numpy as np
+import torch
 import torchvision
 from PIL import Image
-from torch.utils import data
-import glob
-from utils.transform import FixScaleRandomCropWH, FixScaleRandomCropWH_joint, RandomScaleCrop_joint
 from dataset.stanford_pin_dataset import __FOLD__
+from torch.utils import data
+from torchvision import transforms
+from utils.transform import FixScaleRandomCropWH, FixScaleRandomCropWH_joint, RandomScaleCrop_joint
 
-import torch.nn.functional as F
-from imageio import imread
 
 class StanfordPan8DataSet(data.Dataset):
-    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), 
+    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321),
                  mean=(128, 128, 128), scale=True, mirror=True, ignore_label=0,
                  set='val', ssl_dir='', trans='FixScaleRandomCropWH',
                  fold=1):
@@ -28,7 +27,7 @@ class StanfordPan8DataSet(data.Dataset):
         self.is_mirror = mirror
         self.ssl_dir = ssl_dir
         self.img_paths = _get_stanford2d3d_path(root, fold, set)
-        if not max_iters==None:
+        if not max_iters == None:
             self.img_paths = self.img_paths * int(np.ceil(float(max_iters) / len(self.img_paths)))
         self.files = []
         self.set = set
@@ -36,7 +35,7 @@ class StanfordPan8DataSet(data.Dataset):
         for p in self.img_paths:
             self.files.append({
                 "img": p,
-                "name": p.split(self.root+'/')[-1]
+                "name": p.split(self.root + '/')[-1]
             })
 
     def __len__(self):
@@ -51,7 +50,7 @@ class StanfordPan8DataSet(data.Dataset):
         width, height = image.size
         left, top, right, bottom = 0, 320, width, 1728
         image = image.crop((left, top, right, bottom))
-        image = image.resize((width,height), Image.BILINEAR)
+        image = image.resize((width, height), Image.BILINEAR)
         if self.trans == 'resize':
             # resize
             image = image.resize(self.crop_size, Image.BICUBIC)
@@ -73,7 +72,7 @@ class StanfordPan8DataSet(data.Dataset):
             label = Image.open(osp.join(self.ssl_dir, name.replace('_.png', '_labelTrainIds.png')))
             # label = Image.open(osp.join(self.ssl_dir, name))
             label = label.crop((left, top, right, bottom))
-            label = label.resize((width,height), Image.NEAREST)
+            label = label.resize((width, height), Image.NEAREST)
 
             if self.trans == 'resize':
                 # resize
@@ -91,12 +90,12 @@ class StanfordPan8DataSet(data.Dataset):
 
 class StanfordPan8TestDataSet(data.Dataset):
     def __init__(self, root, list_path, max_iters=None, crop_size=(4096, 2048), mean=(128, 128, 128),
-                scale=False, mirror=False, ignore_label=255, set='val', fold=1, trans='resize'):
+                 scale=False, mirror=False, ignore_label=255, set='val', fold=1, trans='resize'):
         self.root = root
         self.crop_size = crop_size
         self.img_paths = _get_stanford2d3d_path(root, fold, set)
 
-        if not max_iters==None:
+        if not max_iters == None:
             self.img_paths = self.img_paths * int(np.ceil(float(max_iters) / len(self.img_paths)))
         self.files = []
         # --- stanford color2id
@@ -104,7 +103,7 @@ class StanfordPan8TestDataSet(data.Dataset):
             id2name = [name.split('_')[0] for name in json.load(f)] + ['<UNK>']
         with open('dataset/s2d3d_pin_list/name2label.json') as f:
             name2id = json.load(f)
-        self.colors = np.load('dataset/s2d3d_pin_list/colors.npy') # for visualization
+        self.colors = np.load('dataset/s2d3d_pin_list/colors.npy')  # for visualization
         self.id2label = np.array([name2id[name] for name in id2name], np.uint8)
         self.trans = trans
 
@@ -112,9 +111,9 @@ class StanfordPan8TestDataSet(data.Dataset):
             self.files.append({
                 "img": p,
                 "label": p.replace("rgb", "semantic"),
-                "name": p.split(self.root+'/')[-1]
+                "name": p.split(self.root + '/')[-1]
             })
-        self._key = np.array([255,255,255,0,1,255,255,2,3,4,5,6,7])
+        self._key = np.array([255, 255, 255, 0, 1, 255, 255, 2, 3, 4, 5, 6, 7])
 
     def __len__(self):
         return len(self.files)
@@ -122,10 +121,10 @@ class StanfordPan8TestDataSet(data.Dataset):
     def _map13to8(self, mask):
         values = np.unique(mask)
         for value in values:
-            if value == 255: 
-                mask[mask==value] = 255
+            if value == 255:
+                mask[mask == value] = 255
             else:
-                mask[mask==value] = self._key[value]
+                mask[mask == value] = self._key[value]
         return mask
 
     def _color2id(self, img, sem):
@@ -135,12 +134,11 @@ class StanfordPan8TestDataSet(data.Dataset):
         sem = self.id2label[sem[..., 1] * 256 + sem[..., 2]]
         sem[unk] = 0
         sem[rgb.sum(-1) == 0] = 0
-        sem -= 1 # 0->255
+        sem -= 1  # 0->255
         return Image.fromarray(sem)
 
     def __getitem__(self, index):
         datafiles = self.files[index]
-
 
         image = Image.open(datafiles["img"]).convert('RGB')
 
@@ -175,6 +173,7 @@ class StanfordPan8TestDataSet(data.Dataset):
 
         return image, label, np.array(size), name
 
+
 def _get_stanford2d3d_path(folder, fold, mode='train'):
     '''image is jpg, label is png'''
     img_paths = []
@@ -193,7 +192,7 @@ def _get_stanford2d3d_path(folder, fold, mode='train'):
 
 
 if __name__ == '__main__':
-    dst = StanfordPan8DataSet("data/Stanford2D3D", 'dataset/s2d3d_pan_list/val.txt', mean=(0,0,0))
+    dst = StanfordPan8DataSet("data/Stanford2D3D", 'dataset/s2d3d_pan_list/val.txt', mean=(0, 0, 0))
     trainloader = data.DataLoader(dst, batch_size=4)
     for i, data in enumerate(trainloader):
         imgs, labels, _ = data
@@ -201,6 +200,6 @@ if __name__ == '__main__':
             img = torchvision.utils.make_grid(imgs).numpy()
             img = np.transpose(img, (1, 2, 0))
             img = img[:, :, ::-1]
-            img = Image.fromarray(np.uint8(img) )
+            img = Image.fromarray(np.uint8(img))
             img.show()
         break

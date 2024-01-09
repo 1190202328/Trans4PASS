@@ -245,4 +245,3 @@ def resnet101c(norm_layer=nn.BatchNorm2d):
 def resnet152c(norm_layer=nn.BatchNorm2d):
     num_block = [3, 8, 36, 3]
     return ResNetV1(BottleneckV1b, num_block, norm_layer=norm_layer, deep_stem=True)
-

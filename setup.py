@@ -2,8 +2,9 @@
 
 import glob
 import os
-from setuptools import find_packages, setup
+
 import torch
+from setuptools import setup
 from torch.utils.cpp_extension import CUDA_HOME, CppExtension, CUDAExtension
 
 torch_ver = [int(x) for x in torch.__version__.split(".")[:2]]

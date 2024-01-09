@@ -1,5 +1,4 @@
 import math
-from functools import partial
 
 import torch
 import torch.nn as nn
@@ -29,8 +28,10 @@ class GroupNorm(nn.GroupNorm):
     """
     Input: tensor in shape [B, C, H, W]
     """
+
     def __init__(self, num_channels, **kwargs):
         super().__init__(1, num_channels, **kwargs)
+
 
 class DWConvSeq(nn.Module):
     def __init__(self, dim=768):
@@ -45,6 +46,7 @@ class DWConvSeq(nn.Module):
 
         return x
 
+
 def make_divisible(v, divisor=8, min_value=None):
     min_value = min_value or divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
@@ -52,6 +54,7 @@ def make_divisible(v, divisor=8, min_value=None):
     if new_v < 0.9 * v:
         new_v += divisor
     return new_v
+
 
 class SqueezeExcite(nn.Module):
     def __init__(self, in_chs, se_ratio=0.25, reduced_base_chs=None,
@@ -72,8 +75,10 @@ class SqueezeExcite(nn.Module):
         x = x * self.gate_fn(x_se)
         return x
 
+
 class SEMlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False, use_se=True):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., linear=False,
+                 use_se=True):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -115,11 +120,13 @@ class SEMlp(nn.Module):
         x = self.fc2(x)
         x = self.drop(x)
         x = self.se(x.permute(0, 2, 1).reshape(B, C, H, W)).reshape(B, C, N).permute(0, 2, 1)
-        return x 
+        return x
+
 
 class DeformableProjEmbed(nn.Module):
     """ feature map to Projected Embedding
     """
+
     def __init__(self, in_chans=512, emb_chans=128):
         super().__init__()
         self.kernel_size = kernel_size = 3
@@ -132,7 +139,7 @@ class DeformableProjEmbed(nn.Module):
         nn.init.constant_(self.offset_conv.weight, 0.)
         nn.init.constant_(self.offset_conv.bias, 0.)
         self.modulator_conv = nn.Conv2d(in_chans, 1 * kernel_size * kernel_size, kernel_size=kernel_size,
-                                     stride=stride, padding=padding)
+                                        stride=stride, padding=padding)
         nn.init.constant_(self.modulator_conv.weight, 0.)
         nn.init.constant_(self.modulator_conv.bias, 0.)
         self.norm = nn.BatchNorm2d(emb_chans)
@@ -161,14 +168,14 @@ class DeformableProjEmbed(nn.Module):
 
 class DeformableMLP(nn.Module):
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        stride: int = 1,
-        padding: int = 0,
-        dilation: int = 1,
-        groups: int = 1,
-        bias: bool = True,
+            self,
+            in_channels: int,
+            out_channels: int,
+            stride: int = 1,
+            padding: int = 0,
+            dilation: int = 1,
+            groups: int = 1,
+            bias: bool = True,
     ):
         super(DeformableMLP, self).__init__()
 
@@ -241,8 +248,9 @@ class DeformableMLPBlock(nn.Module):
         self.cmlp2 = SEMlp(emb_chans)
         h, w = 3, 3
         self.norm1 = GroupNorm(emb_chans)
-        self.pooling = nn.AvgPool2d((h, w), stride=1, padding=(h//2, w//2), count_include_pad=False)
+        self.pooling = nn.AvgPool2d((h, w), stride=1, padding=(h // 2, w // 2), count_include_pad=False)
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+
     def forward(self, x):
         x = self.sdp(x)
         B, C, H, W = x.shape
@@ -257,6 +265,7 @@ class DeformableMLPBlock(nn.Module):
         x = x_ + self.drop_path(self.dmlp(x))
 
         return x
+
 
 class DMLP(nn.Module):
     def __init__(self, vit_params):
@@ -283,4 +292,3 @@ class DMLP(nn.Module):
         out = c1 + c2 + c3 + c4
         out = self.pred(out)
         return out
-

@@ -1,8 +1,7 @@
 """Evaluation Metrics for Semantic Segmentation"""
-import torch
 import numpy as np
+import torch
 from torch import distributed as dist
-import copy
 
 __all__ = ['SegmentationMetric', 'batch_pix_accuracy', 'batch_intersection_union',
            'pixelAccuracy', 'intersectionAndUnion', 'hist_info', 'compute_score']
@@ -86,8 +85,8 @@ def batch_pix_accuracy(output, target):
     predict = torch.argmax(output.long(), 1) + 1
     target = target.long() + 1
 
-    pixel_labeled = torch.sum(target > 0)#.item()
-    pixel_correct = torch.sum((predict == target) * (target > 0))#.item()
+    pixel_labeled = torch.sum(target > 0)  # .item()
+    pixel_correct = torch.sum((predict == target) * (target > 0))  # .item()
     assert pixel_correct <= pixel_labeled, "Correct area should be smaller than Labeled"
     return pixel_correct, pixel_labeled
 
@@ -160,7 +159,8 @@ def hist_info(pred, label, num_cls):
     labeled = np.sum(k)
     correct = np.sum((pred[k] == label[k]))
 
-    return np.bincount(num_cls * label[k].astype(int) + pred[k], minlength=num_cls ** 2).reshape(num_cls, num_cls), labeled, correct
+    return np.bincount(num_cls * label[k].astype(int) + pred[k], minlength=num_cls ** 2).reshape(num_cls,
+                                                                                                 num_cls), labeled, correct
 
 
 def compute_score(hist, correct, labeled):

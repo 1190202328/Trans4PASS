@@ -1,13 +1,13 @@
-import torch
+import glob
 import json
 import os
-import os.path as osp
-from torchvision import transforms
-import glob
+
 import numpy as np
+import torch
 import torchvision
 from PIL import Image
 from torch.utils import data
+from torchvision import transforms
 
 __FOLD__ = {
     '1_train': ['area_1', 'area_2', 'area_3', 'area_4', 'area_6'],
@@ -19,6 +19,7 @@ __FOLD__ = {
     'trainval': ['area_1', 'area_2', 'area_3', 'area_4', 'area_5a', 'area_5b', 'area_6'],
 }
 
+
 class StanfordPinDataSet(data.Dataset):
     def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128),
                  scale=True, mirror=True, ignore_label=0, set='val', fold=1):
@@ -26,9 +27,8 @@ class StanfordPinDataSet(data.Dataset):
         self.crop_size = crop_size
         self.img_paths = _get_stanford2d3d_path(root, fold, set)
 
-        if not max_iters==None:
+        if not max_iters == None:
             self.img_paths = self.img_paths * int(np.ceil(float(max_iters) / len(self.img_paths)))
-
 
         self.files = []
         # --- stanford color2id
@@ -42,12 +42,11 @@ class StanfordPinDataSet(data.Dataset):
             self.files.append({
                 "img": p,
                 "label": p.replace("rgb", "semantic"),
-                "name": p.split(self.root+'/')[-1]
+                "name": p.split(self.root + '/')[-1]
             })
 
     def __len__(self):
         return len(self.files)
-
 
     def __getitem__(self, index):
         datafiles = self.files[index]
@@ -86,6 +85,7 @@ class StanfordPinDataSet(data.Dataset):
         vis = vis // 2 + self.colors[sem] // 2
         Image.fromarray(vis).show()
 
+
 def _get_stanford2d3d_path(folder, fold, mode='train'):
     '''image is jpg, label is png'''
     img_paths = []
@@ -102,8 +102,9 @@ def _get_stanford2d3d_path(folder, fold, mode='train'):
     img_paths = sorted(img_paths)
     return img_paths
 
+
 if __name__ == '__main__':
-    dst = StanfordPinDataSet("data/Stanford2D3D", 'dataset/s2d3d_pin_list/train.txt', mean=(0,0,0))
+    dst = StanfordPinDataSet("data/Stanford2D3D", 'dataset/s2d3d_pin_list/train.txt', mean=(0, 0, 0))
     trainloader = data.DataLoader(dst, batch_size=4)
     for i, data in enumerate(trainloader):
         imgs, labels, size, name = data
@@ -111,6 +112,6 @@ if __name__ == '__main__':
             img = torchvision.utils.make_grid(imgs).numpy()
             img = np.transpose(img, (1, 2, 0))
             img = img[:, :, ::-1]
-            img = Image.fromarray(np.uint8(img) )
+            img = Image.fromarray(np.uint8(img))
             img.show()
         break

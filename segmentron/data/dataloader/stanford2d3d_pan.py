@@ -4,10 +4,8 @@ import json
 import logging
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torchvision
 from PIL import Image
 
 from segmentron.data.dataloader.seg_data_base import SegmentationDataset
@@ -21,6 +19,7 @@ __FOLD__ = {
     '3_val': ['area_1', 'area_3', 'area_6'],
     'trainval': ['area_1', 'area_2', 'area_3', 'area_4', 'area_5a', 'area_5b', 'area_6'],
 }
+
 
 class Stanford2d3dPanSegmentation(SegmentationDataset):
     """Stanford2d3d Semantic Segmentation Dataset."""
@@ -75,7 +74,7 @@ class Stanford2d3dPanSegmentation(SegmentationDataset):
         if self.transform is not None:
             img = self.transform(img)
         mask[mask == 255] = -1
-        return img, mask, self.images[index].split(self.root+'/')[-1]
+        return img, mask, self.images[index].split(self.root + '/')[-1]
 
     def __len__(self):
         return len(self.images)
@@ -109,6 +108,7 @@ def _get_stanford2d3d_pairs(folder, fold, mode='train'):
     mask_paths = [imgpath.replace('rgb', 'semantic') for imgpath in img_paths]
     return img_paths, mask_paths
 
+
 def _color2id(mask, img, id2label):
     mask = np.array(mask, np.int32)
     rgb = np.array(img, np.int32)
@@ -120,18 +120,17 @@ def _color2id(mask, img, id2label):
     return Image.fromarray(mask)
 
 
-
-
 if __name__ == '__main__':
     from torchvision import transforms
     import torch.utils.data as data
-     # Transforms for Normalization
-    input_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((.485, .456, .406), (.229, .224, .225)),])
-     # Create Dataset
+
+    # Transforms for Normalization
+    input_transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((.485, .456, .406), (.229, .224, .225)), ])
+    # Create Dataset
     trainset = Stanford2d3dPanSegmentation(split='train', transform=input_transform)
-     # Create Training Loader
+    # Create Training Loader
     train_data = data.DataLoader(trainset, 4, shuffle=True, num_workers=0)
     for i, data in enumerate(train_data):
         imgs, targets, _ = data
         print(imgs.shape)
-

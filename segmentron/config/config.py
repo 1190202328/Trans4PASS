@@ -1,14 +1,15 @@
-from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 from __future__ import unicode_literals
 
 import codecs
-import yaml
-import six
 import time
-
 from ast import literal_eval
+
+import six
+import yaml
+
 
 class SegmentronConfig(dict):
     def __init__(self, *args, **kwargs):
@@ -80,22 +81,20 @@ class SegmentronConfig(dict):
         from ..models.model_zoo import MODEL_REGISTRY
         model_list = MODEL_REGISTRY.get_list()
         model_list_lower = [x.lower() for x in model_list]
-        
-        assert model_name.lower() in model_list_lower, "Expected model name in {}, but received {}"\
+
+        assert model_name.lower() in model_list_lower, "Expected model name in {}, but received {}" \
             .format(model_list, model_name)
         pop_keys = []
         for key in self.MODEL.keys():
             if key.lower() in model_list_lower:
                 if model_name.lower() == 'pointrend' and \
-                    key.lower() == self.MODEL.POINTREND.BASEMODEL.lower():
+                        key.lower() == self.MODEL.POINTREND.BASEMODEL.lower():
                     continue
             if key.lower() in model_list_lower and key.lower() != model_name.lower():
                 if model_name.lower() in ['pvt_trans2seg', 'pvt_fpt']: continue
                 pop_keys.append(key)
         for key in pop_keys:
             self.MODEL.pop(key)
-
-
 
     def check_and_freeze(self):
         self.TIME_STAMP = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
