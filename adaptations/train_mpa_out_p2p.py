@@ -1,6 +1,9 @@
 import glob
 import shutil
 import os, sys
+
+from dataset.sp13_dataset import synpass13DataSet
+
 os.chdir(sys.path[0])
 import torch
 import torch.nn as nn
@@ -31,10 +34,20 @@ EMB_CHANS = 128
 BATCH_SIZE = 1
 ITER_SIZE = 1
 NUM_WORKERS = BATCH_SIZE * 2
-SOURCE_NAME = 'CS13'
-TARGET_NAME = 'CS132DP13'
-DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
-DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
+
+# need to change
+SOURCE_NAME = 'SP13'  # CS13, SP13
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/SP132DP13_Trans4PASS_plus_v2_WarmUp/2024-01-08-11-25_BestSP132DP13_1000iter_41.45miou.pth'
+if SOURCE_NAME == 'CS13':
+    DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
+    DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
+elif SOURCE_NAME == 'SP13':
+    DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS'
+    DATA_LIST_PATH = 'dataset/synpass_list/train.txt'
+else:
+    raise Exception
+TARGET_NAME = f'{SOURCE_NAME}2DP13'
+
 IGNORE_LABEL = 255
 INPUT_SIZE = '1024,512'
 DATA_DIRECTORY_TARGET = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
@@ -52,7 +65,6 @@ NUM_STEPS_STOP = 80000 # early stopping
 NUM_PROTOTYPE = 50
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS132DP13_Trans4PASS_plus_v2_WarmUp/2024-01-06-23-42_BestCS132DP13_2000iter_51.24miou.pth'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 100
 DIR_NAME = '{}2{}_{}_MPA/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
@@ -70,7 +82,6 @@ MOMENTUM_MEM = 0.999
 ITER_UPDATE_MEM = 100
 # --- pseudo label
 LAMBDA_SSL = 1
-SOURCE = 'cityscapes13'
 LAMBDA_KL_S = 0.001
 LAMBDA_KL_T = 0.001
 TARGET = 'densepass13'
@@ -90,8 +101,6 @@ def get_arguments():
                         help="available options : Trans4PASS_plus_v1, Trans4PASS_plus_v2")
     parser.add_argument("--emb-chans", type=int, default=EMB_CHANS,
                         help="Number of channels in decoder head.")
-    parser.add_argument("--source", type=str, default=SOURCE,
-                        help="available options : cityscapes, synpass, structured3d, stanford2d3dpin")
     parser.add_argument("--target", type=str, default=TARGET,
                         help="available options : densepass, stanford2d3dpan")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE,
@@ -294,8 +303,16 @@ def main():
         os.makedirs(args.snapshot_dir)
 
     # init data loader
-    trainset = CS13SrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
+    if SOURCE_NAME == 'CS13':
+        trainset = CS13SrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
                             crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set)
+    elif SOURCE_NAME == 'SP13':
+        trainset = synpass13DataSet(args.data_dir, args.data_list,
+                                  max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                  crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror,
+                                  mean=IMG_MEAN, set=args.set)
+    else:
+        raise Exception
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                   pin_memory=True)
     trainloader_iter = enumerate(trainloader)

@@ -22,7 +22,11 @@ import torch.nn as nn
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
 EMB_CHANS = 128
-TARGET_NAME = 'CS132DP13'
+
+# need to change
+TARGET_NAME = 'SP132DP13'  # CS132DP13；SP132DP13
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/SP132DP13_Trans4PASS_plus_v2_WarmUp/2024-01-08-11-25_BestSP132DP13_1000iter_41.45miou.pth'
+
 DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = './dataset/densepass_list/train.txt'
 IGNORE_LABEL = 255
@@ -30,7 +34,6 @@ NUM_CLASSES = 13
 BATCH_SIZE = 1
 NUM_WORKERS = 0
 MODEL = 'Trans4PASS_plus_v2'
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS132DP13_Trans4PASS_plus_v2_WarmUp/2024-01-06-23-42_BestCS132DP13_2000iter_51.24miou.pth'
 SET = 'train'
 SAVE_PATH = './pseudo_{}_{}_ms'.format(TARGET_NAME, MODEL)
 

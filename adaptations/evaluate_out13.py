@@ -24,10 +24,12 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import torch.nn as nn
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-SOURCE_NAME = 'CS13'
-# SOURCE_NAME = 'SP13'
+
+# need to change
+SOURCE_NAME = 'SP13' # CS13, SP13
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/SP132SP132DP13_Trans4PASS_plus_v2_MPA/2024-01-08-15-15_BestSP132SP132DP13_59000iter_45.17miou.pth'
+
 TARGET_NAME = 'DP13'
-# MODEL = 'Trans4PASS_plus_v1'
 MODEL = 'Trans4PASS_plus_v2'
 EMB_CHANS = 128
 DIR_NAME = '{}2{}_{}_MPA/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
@@ -38,7 +40,6 @@ SAVE_PATH = './result/' + DIR_NAME
 
 IGNORE_LABEL = 255
 NUM_CLASSES = 13
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS132CS132DP13_Trans4PASS_plus_v2_MPA/2024-01-07-15-38_BestCS132CS132DP13_60500iter_53.09miou.pth'
 SET = 'val'
 
 EMB_CHANS = 128

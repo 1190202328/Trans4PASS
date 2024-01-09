@@ -13,6 +13,8 @@ import torch.nn.functional as F
 import logging, sys
 import time
 from tensorboardX import SummaryWriter
+
+from dataset.sp13_dataset import synpass13DataSet
 from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
 from model.discriminator import FCDiscriminator
 from dataset.cs13_dataset_src import CS13SrcDataSet
@@ -32,11 +34,22 @@ MODEL = 'Trans4PASS_plus_v2'
 EMB_CHANS = 128
 BATCH_SIZE = 4
 ITER_SIZE = 1
-NUM_WORKERS = BATCH_SIZE 
-SOURCE_NAME = 'CS13'
+NUM_WORKERS = BATCH_SIZE
+
+# need to change
+SOURCE_NAME = 'SP13'  # CS13, SP13
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/synpass13/trans4pass_plus_small_512x512/trans4pass_plus_small_512x512.pth'
+
+if SOURCE_NAME == 'CS13':
+    DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
+    DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
+elif SOURCE_NAME == 'SP13':
+    DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS'
+    DATA_LIST_PATH = 'dataset/synpass_list/train.txt'
+else:
+    raise Exception
+
 TARGET_NAME = 'DP13'
-DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
-DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
 IGNORE_LABEL = 255
 INPUT_SIZE = '1024,512'
 DATA_DIRECTORY_TARGET = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
@@ -53,7 +66,6 @@ NUM_STEPS_STOP = 8000  # early stopping
 NUM_PROTOTYPE = 50
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/cityscapes13/trans4pass_plus_small_512x512/trans4pass_plus_small_512x512.pth'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 1000
 DIR_NAME = '{}2{}_{}_WarmUp/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
@@ -293,8 +305,14 @@ def main():
         os.makedirs(args.snapshot_dir)
 
     # init data loader
-    trainset = CS13SrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
-                            crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set)
+    if SOURCE_NAME == 'CS13':
+        trainset = CS13SrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set)
+    elif SOURCE_NAME == 'SP13':
+        trainset = synpass13DataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN, set=args.set)
+    else:
+        raise Exception
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                   pin_memory=True)
     trainloader_iter = enumerate(trainloader)
