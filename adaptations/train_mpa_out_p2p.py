@@ -47,6 +47,7 @@ elif SOURCE_NAME == 'SP13':
 else:
     raise Exception
 TARGET_NAME = f'{SOURCE_NAME}2DP13'
+# change done
 
 IGNORE_LABEL = 255
 INPUT_SIZE = '1024,512'
@@ -285,19 +286,26 @@ def main():
     # init D
     model_D = FCDiscriminator(num_classes=args.num_classes).to(device)
 
-    init_mem_j_path = 'init_memory_joint_ms_{}_CS13.npy'.format(MODEL)
-    if not os.path.exists(init_mem_j_path):
-        trainset_temp = densepass13DataSet(args.data_dir_target, args.data_list_target, crop_size=input_size_target,
-                                           set='train',
-                                           ssl_dir=SSL_DIR)
-        trainloader_temp = data.DataLoader(trainset_temp, batch_size=1, shuffle=False)
-        testset_temp = CS13SrcDataSet(args.data_dir, args.data_list, crop_size=input_size, set='train')
-        testloader_temp = data.DataLoader(testset_temp, batch_size=1, shuffle=False)
-        init_mem = init_memory(trainloader_temp, testloader_temp, model, num_classes=args.num_classes,
-                               save_path=init_mem_j_path)
-        del trainloader_temp, trainset_temp, testset_temp, testloader_temp
+    # init memory
+    model_ckpt_name = RESTORE_FROM.split('/')[-1].split('.')[0]
+    init_mem_j_path = 'init_memory_joint_ms_{}_{}.npy'.format(MODEL, model_ckpt_name)
+    if SOURCE_NAME == 'CS13':
+        src_temp = CS13SrcDataSet(args.data_dir, args.data_list, crop_size=input_size, set='train')
+    elif SOURCE_NAME == 'SP13':
+        src_temp = synpass13DataSet(args.data_dir, args.data_list, crop_size=input_size, set='train')
     else:
-        init_mem = np.load(init_mem_j_path)
+        raise Exception
+    src_loader_temp = data.DataLoader(src_temp, batch_size=1, shuffle=False)
+
+    tgt_temp = densepass13DataSet(args.data_dir_target, args.data_list_target, crop_size=input_size_target,
+                                  set='train',
+                                  ssl_dir=SSL_DIR)
+    tgt_loader_temp = data.DataLoader(tgt_temp, batch_size=1, shuffle=False)
+    init_mem = init_memory(src_loader_temp, tgt_loader_temp, model, num_classes=args.num_classes,
+                           save_path=init_mem_j_path)
+    del src_temp, src_loader_temp, tgt_temp, tgt_loader_temp
+    # init memory done
+
     init_mem = torch.from_numpy(init_mem).to(device).to(torch.get_default_dtype())
     init_batch_mem = [[] for _ in range(NUM_CLASSES)]
 
