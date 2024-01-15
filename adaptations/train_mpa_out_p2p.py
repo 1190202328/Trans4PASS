@@ -38,6 +38,8 @@ NUM_WORKERS = BATCH_SIZE * 2
 # need to change
 SOURCE_NAME = 'SP13'  # CS13, SP13
 RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/SP132DP13_Trans4PASS_plus_v2_WarmUp/2024-01-08-11-25_BestSP132DP13_1000iter_41.45miou.pth'
+# change done
+
 if SOURCE_NAME == 'CS13':
     DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
     DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
@@ -47,7 +49,6 @@ elif SOURCE_NAME == 'SP13':
 else:
     raise Exception
 TARGET_NAME = f'{SOURCE_NAME}2DP13'
-# change done
 
 IGNORE_LABEL = 255
 INPUT_SIZE = '1024,512'
