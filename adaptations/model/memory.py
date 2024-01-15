@@ -150,7 +150,7 @@ def init_memory(dataloader_src, dataloader_trg, backbone_net, num_classes=19, sa
     memory = np.zeros((num_classes, memory_cfg['num_feats_per_cls'], memory_cfg['feats_len']))
     for i in range(num_classes):
         memory[i] = (memory_s[i] + memory_t[i]) / 2.
-    np.save(memory_cfg['savepath'], memory)
+    np.save(save_path, memory)
 
     return memory
 
