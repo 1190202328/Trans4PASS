@@ -8,6 +8,18 @@ import torch
 import torch.nn.functional as F
 
 
+def freeze_model(model):
+    for param in model.parameters():
+        param.requires_grad = False
+    model.eval()
+
+
+def unfreeze_model(model):
+    for param in model.parameters():
+        param.requires_grad = True
+    model.train()
+
+
 def set_random_seed(seed, deterministic=True):
     """Set random seed."""
     random.seed(seed)

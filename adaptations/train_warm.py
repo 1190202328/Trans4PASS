@@ -20,7 +20,7 @@ from dataset.cs_dataset_src import CSSrcDataSet
 from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
 from model.discriminator import FCDiscriminator
 from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
-from utils.init import set_random_seed
+from utils.init import set_random_seed, freeze_model, unfreeze_model
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
@@ -208,18 +208,6 @@ def adjust_learning_rate_D(optimizer, i_iter):
     optimizer.param_groups[0]['lr'] = lr
     if len(optimizer.param_groups) > 1:
         optimizer.param_groups[1]['lr'] = lr * 10
-
-
-def freeze_model(model):
-    for param in model.parameters():
-        param.requires_grad = False
-    model.eval()
-
-
-def unfreeze_model(model):
-    for param in model.parameters():
-        param.requires_grad = True
-    model.train()
 
 
 def main():
