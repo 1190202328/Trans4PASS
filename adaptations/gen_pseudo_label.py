@@ -8,13 +8,16 @@ import torch.nn.functional as F
 from PIL import Image
 from torch.utils import data
 
-from dataset.densepass_dataset import densepassDataSet
+from compute_iou import fast_hist, per_class_iu
+from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
 from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
 from utils.init import set_random_seed, freeze_model
 
+IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 EMB_CHANS = 128
 DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = './dataset/densepass_list/train.txt'
+DATA_LIST_TEST_PATH = './dataset/densepass_list/val.txt'
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
 BATCH_SIZE = 1
@@ -104,6 +107,31 @@ def main():
     testloader = data.DataLoader(targetset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS,
                                  pin_memory=False)
     interp = nn.Upsample(size=(400, 2048), mode='bilinear', align_corners=True)
+
+    # eval on dp test set
+    real_test_set = densepassTestDataSet(args.data_dir, DATA_LIST_TEST_PATH, crop_size=(2048, 400),
+                                         mean=IMG_MEAN, scale=False, mirror=False, set='val')
+    real_testloader = data.DataLoader(real_test_set, batch_size=1, shuffle=False, pin_memory=True)
+    print('eval on dp test set...')
+    hist = np.zeros((args.num_classes, args.num_classes))
+    for index, batch in enumerate(real_testloader):
+        image, label, _, name = batch
+        with torch.no_grad():
+            _, output2 = model(image.to(device))
+        output = output2.cpu().data[0].numpy()
+        output = output.transpose(1, 2, 0)
+        output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
+        label = label.cpu().data[0].numpy()
+        hist += fast_hist(label.flatten(), output.flatten(), args.num_classes)
+    mIoUs = per_class_iu(hist)
+    for ind_class in range(args.num_classes):
+        temp_str = '===>{:<15}:\t{}'.format(ind_class, str(round(mIoUs[ind_class] * 100, 2)))
+        print(temp_str)
+    mIoU = round(np.nanmean(mIoUs) * 100, 2)
+    print('===> mIoU: ' + str(mIoU))
+
+    # generate pseudo labels for dp train set
+    print('generate pseudo labels for dp train set...')
     predicted_label = np.zeros((len(targetset), 400, 2048), dtype=np.int8)
     predicted_prob = np.zeros((len(targetset), 400, 2048), dtype=np.float16)
     image_name = []

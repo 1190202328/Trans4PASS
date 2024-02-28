@@ -499,7 +499,7 @@ def main():
                     i_iter, args.num_steps, loss_seg_value, loss_adv_target_value, loss_D_value, loss_kl_s_value,
                     loss_kl_t_value, loss_seg_value_t))
 
-        if i_iter >= args.num_steps_stop - 1:
+        if i_iter >= args.num_steps_stop:
             logging.info('save model ...')
             torch.save(model.state_dict(),
                        osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '.pth'))

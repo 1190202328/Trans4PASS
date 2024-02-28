@@ -461,7 +461,7 @@ def main():
             logging.info('iter = {0:8d}/{1:8d}, loss_seg = {2:.3f}, loss_adv = {3:.3f} loss_D = {4:.3f}'.format(
                 i_iter, args.num_steps, loss_seg_value, loss_adv_target_value, loss_D_value, ))
 
-        if i_iter >= args.num_steps_stop - 1:
+        if i_iter >= args.num_steps_stop:
             logging.info('save model ...')
             torch.save(model.state_dict(),
                        osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '.pth'))

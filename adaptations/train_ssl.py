@@ -464,7 +464,7 @@ def main():
                     f.write(best_miou_str)
             unfreeze_model(model)
 
-        if i_iter >= args.num_steps_stop - 1:
+        if i_iter >= args.num_steps_stop:
             logging.info('save model ...')
             torch.save(model.state_dict(),
                        osp.join(args.snapshot_dir, 'latest.pth'))
