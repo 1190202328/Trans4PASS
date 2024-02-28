@@ -6,7 +6,7 @@ import torchvision
 from PIL import Image
 from torch.utils import data
 from torchvision import transforms
-from utils.transform import FixScaleRandomCropWH
+from utils.transform import RandomCropWH
 
 
 class densepassDataSet(data.Dataset):
@@ -44,12 +44,14 @@ class densepassDataSet(data.Dataset):
         image = Image.open(datafiles["img"]).convert('RGB')
         name = datafiles["name"]
 
+        crop = RandomCropWH(image.size, self.crop_size)
+
         if self.trans == 'resize':
             # resize
             image = image.resize(self.crop_size, Image.BICUBIC)
         elif self.trans == 'FixScaleRandomCropWH':
             # resize, keep ratio
-            image = FixScaleRandomCropWH(self.crop_size, is_label=False)(image)
+            image = crop(image)
         else:
             raise NotImplementedError
 
@@ -68,7 +70,7 @@ class densepassDataSet(data.Dataset):
                 label = label.resize(self.crop_size, Image.NEAREST)
             elif self.trans == 'FixScaleRandomCropWH':
                 # resize, keep ratio
-                label = FixScaleRandomCropWH(self.crop_size, is_label=True)(label)
+                label = crop(label)
             else:
                 raise NotImplementedError
             label = torch.LongTensor(np.array(label).astype('int32'))

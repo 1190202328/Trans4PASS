@@ -313,6 +313,21 @@ class FixScaleRandomCropWH_joint(object):
         return img, mask
 
 
+class RandomCropWH(object):
+    def __init__(self, size, crop_size_wh):
+        assert isinstance(crop_size_wh, tuple)
+        self.crop_size = crop_size_wh
+        self.size = size
+        w, h = size
+        self.x1 = random.randint(0, w - self.crop_size[0])
+        self.y1 = random.randint(0, h - self.crop_size[1])
+
+    def __call__(self, sample):
+        # left, upper, right, and lower
+        sample = sample.crop((self.x1, self.y1, self.x1 + self.crop_size[0], self.y1 + self.crop_size[1]))
+        return sample
+
+
 class FixScaleCrop(object):
     def __init__(self, crop_size, is_label=False):
         self.crop_size = crop_size

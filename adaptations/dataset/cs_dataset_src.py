@@ -23,22 +23,43 @@ class CSSrcDataSet(data.Dataset):
 
         for name in self.img_ids:
             img_file = osp.join(self.root, "leftImg8bit/%s/%s" % (self.set, name))
-            lbname = name.replace("leftImg8bit", "gtFine_labelTrainIds")
+            lbname = name.replace("leftImg8bit", "gtFine_labelIds")
             label_file = osp.join(self.root, "gtFine/%s/%s" % (self.set, lbname))
             self.files.append({
                 "img": img_file,
                 "label": label_file,
                 "name": name
             })
+        # map to 19 class
+        self._key = np.array([255, 255, 255, 255, 255,
+                              255, 255, 0, 1, 255, 255,
+                              2, 3, 4, 255, 255, 255,
+                              5, 255, 6, 7, 8, 9,
+                              10, 11, 12, 13, 14, 15,
+                              255, 255, 16, 17, 18])
 
     def __len__(self):
         return len(self.files)
+
+    def _mapto19(self, mask):
+        values = np.unique(mask)
+        new_mask = np.ones_like(mask) * 255
+        for value in values:
+            if value == 255 or value <= -1:
+                new_mask[mask == value] = 255
+            else:
+                new_mask[mask == value] = self._key[value]
+        mask = new_mask
+        return mask
 
     def __getitem__(self, index):
         datafiles = self.files[index]
 
         image = Image.open(datafiles["img"]).convert('RGB')
         label = Image.open(datafiles["label"])
+        label = self._mapto19(np.array(label).astype('int32'))
+        label = Image.fromarray(label)
+
         name = datafiles["name"]
 
         # resize
