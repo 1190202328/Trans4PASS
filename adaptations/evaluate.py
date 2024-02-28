@@ -26,11 +26,9 @@ RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS
 TARGET_NAME = 'DP'
 MODEL = 'Trans4PASS_plus_v2'
 EMB_CHANS = 128
-DIR_NAME = '{}2{}_{}_MPA/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
 DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = 'dataset/densepass_list/val.txt'
 INPUT_SIZE_TARGET = '2048,400'
-SAVE_PATH = './result/' + DIR_NAME
 
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
@@ -94,8 +92,6 @@ def get_arguments():
                         help="choose gpu device.")
     parser.add_argument("--set", type=str, default=SET,
                         help="choose evaluation set.")
-    parser.add_argument("--save", type=str, default=SAVE_PATH,
-                        help="Path to save result.")
     parser.add_argument("--multi-scale", action='store_true')
     return parser.parse_args()
 
@@ -104,9 +100,6 @@ def main():
     args = get_arguments()
 
     gpu0 = args.gpu
-
-    if not os.path.exists(args.save):
-        os.makedirs(args.save)
 
     if args.model == 'Trans4PASS_plus_v1':
         model = Trans4PASS_plus_v1(num_classes=args.num_classes)
@@ -162,6 +155,7 @@ def main():
 
         save_vis = False
         if save_vis:
+            raise Exception
             output_col = colorize_mask(output)
             output = Image.fromarray(output.astype(np.uint8))
             name = name[0].split('/')[-1]
