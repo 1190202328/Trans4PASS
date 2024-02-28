@@ -7,7 +7,7 @@ import numpy as np
 os.chdir(sys.path[0])
 import torch
 from torch.utils import data
-from model.trans4pass import Trans4PASS_v1, Trans4PASS_v2
+from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
 from dataset.densepass_dataset import densepassTestDataSet
 from torchvision import transforms
 from compute_iou import fast_hist, per_class_iu
@@ -17,9 +17,15 @@ from PIL import Image
 import torch.nn as nn
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
+
+# need to change
 SOURCE_NAME = 'CS'
-TARGET_NAME = 'DensePASS'
-MODEL = 'Trans4PASS_v1'
+RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS2DP_Trans4PASS_plus_v2_MPA/BestCS2DensePASS_G.pth'
+# change done
+
+TARGET_NAME = 'DP'
+MODEL = 'Trans4PASS_plus_v2'
+EMB_CHANS = 128
 DIR_NAME = '{}2{}_{}_MPA/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
 DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = 'dataset/densepass_list/val.txt'
@@ -28,10 +34,8 @@ SAVE_PATH = './result/' + DIR_NAME
 
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS2DensePASS_Trans4PASS_v1_MPA/BestCS2DensePASS_G.pth'
 SET = 'val'
 
-EMB_CHANS = 128
 palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153, 153, 153, 153, 250, 170, 30,
            220, 220, 0, 107, 142, 35, 152, 251, 152, 70, 130, 180, 220, 20, 60, 255, 0, 0, 0, 0, 142, 0, 0, 70,
            0, 60, 100, 0, 80, 100, 0, 0, 230, 119, 11, 32]
@@ -92,6 +96,7 @@ def get_arguments():
                         help="choose evaluation set.")
     parser.add_argument("--save", type=str, default=SAVE_PATH,
                         help="Path to save result.")
+    parser.add_argument("--multi-scale", action='store_true')
     return parser.parse_args()
 
 
@@ -103,10 +108,10 @@ def main():
     if not os.path.exists(args.save):
         os.makedirs(args.save)
 
-    if args.model == 'Trans4PASS_v1':
-        model = Trans4PASS_v1(num_classes=args.num_classes, emb_chans=EMB_CHANS)
-    elif args.model == 'Trans4PASS_v2':
-        model = Trans4PASS_v2(num_classes=args.num_classes, emb_chans=EMB_CHANS)
+    if args.model == 'Trans4PASS_plus_v1':
+        model = Trans4PASS_plus_v1(num_classes=args.num_classes)
+    elif args.model == 'Trans4PASS_plus_v2':
+        model = Trans4PASS_plus_v2(num_classes=args.num_classes)
     else:
         raise ValueError
 
@@ -137,7 +142,12 @@ def main():
         image = image.cuda(gpu0)
         b, _, _, _ = image.shape
         output_temp = torch.zeros((b, NUM_CLASSES, h, w), dtype=image.dtype).cuda(gpu0)
-        scales = [1]  # [0.5,0.75,1.0,1.25,1.5,1.75] # ms
+        if args.multi_scale:
+            # scales = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]  # ms
+            # scales = [0.75, 1.0, 1.75]  # ms
+            raise Exception
+        else:
+            scales = [1]  # origin no scale
         for sc in scales:
             new_h, new_w = int(sc * h), int(sc * w)
             img_tem = nn.UpsamplingBilinear2d(size=(new_h, new_w))(image)
