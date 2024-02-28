@@ -8,26 +8,19 @@ import torch.nn.functional as F
 from PIL import Image
 from torch.utils import data
 
-from adaptations.dataset.dp13_dataset import densepass13DataSet
-from adaptations.model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
-
-IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
+from dataset.densepass_dataset import densepassDataSet
+from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
+from utils.init import set_random_seed, freeze_model
 
 EMB_CHANS = 128
-
-# need to change
-TARGET_NAME = 'SP132DP13'  # CS132DP13；SP132DP13
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/SP132DP13_Trans4PASS_plus_v2_WarmUp/2024-01-08-11-25_BestSP132DP13_1000iter_41.45miou.pth'
-
 DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = './dataset/densepass_list/train.txt'
 IGNORE_LABEL = 255
-NUM_CLASSES = 13
+NUM_CLASSES = 19
 BATCH_SIZE = 1
 NUM_WORKERS = 0
 MODEL = 'Trans4PASS_plus_v2'
 SET = 'train'
-SAVE_PATH = './pseudo_{}_{}_ms'.format(TARGET_NAME, MODEL)
 
 palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153, 153, 153, 153, 250, 170, 30,
            220, 220, 0, 107, 142, 35, 152, 251, 152, 70, 130, 180, 220, 20, 60, 255, 0, 0, 0, 0, 142, 0, 0, 70,
@@ -64,13 +57,16 @@ def get_arguments():
                         help="The index of the label to ignore during the training.")
     parser.add_argument("--num-classes", type=int, default=NUM_CLASSES,
                         help="Number of classes to predict (including background).")
-    parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
+    parser.add_argument("--restore-from", type=str,
                         help="Where restore model parameters from.")
     parser.add_argument("--set", type=str, default=SET,
                         help="choose evaluation set.")
-    parser.add_argument("--save", type=str, default=SAVE_PATH,
+    parser.add_argument("--save", type=str,
                         help="Path to save result.")
     parser.add_argument("--cpu", action='store_true', help="choose to use cpu device.")
+    parser.add_argument("--random-seed", type=int, default=1234,
+                        help="Random seed to have reproducible results.")
+    parser.add_argument("--multi-scale", action='store_true')
     return parser.parse_args()
 
 
@@ -78,6 +74,9 @@ def main():
     """Create the model and start the evaluation process."""
 
     args = get_arguments()
+
+    # set random seed
+    set_random_seed(args.random_seed)
 
     if not os.path.exists(args.save):
         os.makedirs(args.save)
@@ -88,7 +87,9 @@ def main():
         model = Trans4PASS_plus_v2(num_classes=args.num_classes, emb_chans=args.emb_chans)
     else:
         raise ValueError
-    saved_state_dict = torch.load(RESTORE_FROM, map_location=lambda storage, loc: storage)
+    print(f'loading from [{args.restore_from}]')
+    print(f'saving into [{args.save}]')
+    saved_state_dict = torch.load(args.restore_from, map_location=lambda storage, loc: storage)
     if 'state_dict' in saved_state_dict.keys():
         saved_state_dict = saved_state_dict['state_dict']
     msg = model.load_state_dict(saved_state_dict, strict=False)
@@ -96,10 +97,10 @@ def main():
 
     device = torch.device("cuda" if not args.cpu else "cpu")
     model = model.to(device)
-    model.eval()
+    freeze_model(model)
     if not os.path.exists(args.save):
         os.makedirs(args.save, exist_ok=True)
-    targetset = densepass13DataSet(args.data_dir, args.data_list, crop_size=(2048, 400), set=args.set)
+    targetset = densepassDataSet(args.data_dir, args.data_list, crop_size=(2048, 400), set=args.set)
     testloader = data.DataLoader(targetset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS,
                                  pin_memory=False)
     interp = nn.Upsample(size=(400, 2048), mode='bilinear', align_corners=True)
@@ -116,7 +117,12 @@ def main():
         image = image.to(device)
         b, c, h, w = image.shape
         output_temp = torch.zeros((b, NUM_CLASSES, h, w), dtype=image.dtype).to(device)
-        scales = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
+        if args.multi_scale:
+            # scales = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]  # ms
+            # scales = [0.75, 1.0, 1.75]  # ms
+            raise Exception
+        else:
+            scales = [1]  # origin no scale
         for sc in scales:
             new_h, new_w = int(sc * h), int(sc * w)
             img_tem = nn.UpsamplingBilinear2d(size=(new_h, new_w))(image)
