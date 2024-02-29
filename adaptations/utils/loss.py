@@ -31,13 +31,13 @@ def kd_loss(feats, select_feat_self):
         F.softmax(select_feat_self / T, dim=1)) * (alpha * T * T) + F.cross_entropy(feats,
                                                                                     torch.argmax(select_feat_self,
                                                                                                  dim=1).long()) * (
-                               1. - alpha)
+                           1. - alpha)
     return loss_kl_self
 
 
 def feat_kl_loss(feats, labels, feats_mem):
     B, C, H, W = feats.shape
-    CLS = 19
+
     _, H_org, W_org = labels.shape
     labels = F.interpolate(labels.unsqueeze(1).float(), (H, W), mode='nearest')
 
@@ -69,6 +69,6 @@ def feat_kl_loss(feats, labels, feats_mem):
         F.log_softmax(feats / T, dim=1),
         F.softmax(select_feat / T, dim=1)) * (alpha * T * T) + F.cross_entropy(feats, torch.argmax(select_feat,
                                                                                                    dim=1).long()) * (
-                          1. - alpha)
+                      1. - alpha)
 
     return loss_kl, batch_feats_mem, select_feat
