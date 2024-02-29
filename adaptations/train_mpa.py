@@ -264,6 +264,7 @@ def main():
     model_D = FCDiscriminator(num_classes=args.num_classes).to(device)
 
     if not os.path.exists(init_memory_path):
+        print(f'no memory calculated, calculating and saving to [{init_memory_path}]')
         source_trainset_temp = CSSrcDataSet(args.data_dir, args.data_list, crop_size=input_size, set='train')
         source_trainloader_temp = data.DataLoader(source_trainset_temp, batch_size=1, shuffle=False)
         target_trainset_temp = densepassDataSet(args.data_dir_target, args.data_list_target,
@@ -275,6 +276,7 @@ def main():
                                save_path=init_memory_path)
         del source_trainset_temp, source_trainloader_temp, target_trainset_temp, target_trainloader_temp
     else:
+        print(f'memory already calculated, loading from [{init_memory_path}]')
         init_mem = np.load(init_memory_path)
     init_mem = torch.from_numpy(init_mem).to(device).to(torch.get_default_dtype())
     init_batch_mem = [[] for _ in range(NUM_CLASSES)]
