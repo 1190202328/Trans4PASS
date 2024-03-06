@@ -6,7 +6,7 @@ import torchvision
 from PIL import Image
 from torch.utils import data
 from torchvision import transforms
-from utils.transform import FixScaleRandomCropWH
+from utils.transform import RandomCropWH
 
 
 class densepass13DataSet(data.Dataset):
@@ -44,12 +44,14 @@ class densepass13DataSet(data.Dataset):
         image = Image.open(datafiles["img"]).convert('RGB')
         name = datafiles["name"]
 
+        crop = RandomCropWH(image.size, self.crop_size)
+
         if self.trans == 'resize':
             # resize
             image = image.resize(self.crop_size, Image.BICUBIC)
         elif self.trans == 'FixScaleRandomCropWH':
             # resize, keep ratio
-            image = FixScaleRandomCropWH(self.crop_size, is_label=False)(image)
+            image = crop(image)
         else:
             raise NotImplementedError
 
@@ -68,7 +70,7 @@ class densepass13DataSet(data.Dataset):
                 label = label.resize(self.crop_size, Image.NEAREST)
             elif self.trans == 'FixScaleRandomCropWH':
                 # resize, keep ratio
-                label = FixScaleRandomCropWH(self.crop_size, is_label=True)(label)
+                label = crop(label)
             else:
                 raise NotImplementedError
             label = torch.LongTensor(np.array(label).astype('int32'))
@@ -95,7 +97,7 @@ class densepass13TestDataSet(data.Dataset):
 
         for name in self.img_ids:
             img_file = osp.join(self.root, "leftImg8bit/%s/%s" % (self.set, name))
-            lbname = name.replace('_.png', '_labelTrainIds.png')
+            lbname = name.replace("_.png", "_labelTrainIds.png")
             label_file = osp.join(self.root, "gtFine/%s/%s" % (self.set, lbname))
             self.files.append({
                 "img": img_file,
@@ -112,7 +114,7 @@ class densepass13TestDataSet(data.Dataset):
         new_mask = np.ones_like(mask) * 255
         # new_mask -= 1
         for value in values:
-            if value == 255:
+            if value == 255 or value <= -1:
                 new_mask[mask == value] = 255
             else:
                 new_mask[mask == value] = self._key[value]

@@ -18,11 +18,6 @@ import torch.nn as nn
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
-# need to change
-SOURCE_NAME = 'CS'
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/CS2DP_Trans4PASS_plus_v2_MPA/BestCS2DensePASS_G.pth'
-# change done
-
 TARGET_NAME = 'DP'
 MODEL = 'Trans4PASS_plus_v2'
 EMB_CHANS = 128
@@ -86,7 +81,7 @@ def get_arguments():
                         help="Number of classes to predict (including background).")
     parser.add_argument("--input-size-target", type=str, default=INPUT_SIZE_TARGET,
                         help="Comma-separated string with height and width of target images.")
-    parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
+    parser.add_argument("--restore-from", type=str,
                         help="Where restore model parameters from.")
     parser.add_argument("--gpu", type=int, default=0,
                         help="choose gpu device.")

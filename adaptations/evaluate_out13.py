@@ -9,7 +9,6 @@ import torch
 from torch.utils import data
 from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
 from dataset.dp13_dataset import densepass13TestDataSet
-# from dataset.cs_dataset_src import CSSrcDataSet
 from torchvision import transforms
 from compute_iou import fast_hist, per_class_iu
 
@@ -19,24 +18,17 @@ import torch.nn as nn
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
-# need to change
-SOURCE_NAME = 'SP13'  # CS13, SP13
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/SP132SP132DP13_Trans4PASS_plus_v2_MPA/2024-01-08-15-15_BestSP132SP132DP13_59000iter_45.17miou.pth'
-
 TARGET_NAME = 'DP13'
 MODEL = 'Trans4PASS_plus_v2'
 EMB_CHANS = 128
-DIR_NAME = '{}2{}_{}_MPA/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
 DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
 DATA_LIST_PATH = 'dataset/densepass_list/val.txt'
 INPUT_SIZE_TARGET = '2048,400'
-SAVE_PATH = './result/' + DIR_NAME
 
 IGNORE_LABEL = 255
 NUM_CLASSES = 13
 SET = 'val'
 
-EMB_CHANS = 128
 palette = [128, 64, 128,
            244, 35, 232,
            70, 70, 70,
@@ -79,8 +71,6 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="Network")
     parser.add_argument("--model", type=str, default=MODEL,
                         help="available options : Trans4PASS_plus_v1, Trans4PASS_plus_v2")
-    parser.add_argument("--emb-chans", type=int, default=EMB_CHANS,
-                        help="Number of channels in decoder head.")
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the Cityscapes dataset.")
     parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
@@ -91,14 +81,13 @@ def get_arguments():
                         help="Number of classes to predict (including background).")
     parser.add_argument("--input-size-target", type=str, default=INPUT_SIZE_TARGET,
                         help="Comma-separated string with height and width of target images.")
-    parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
+    parser.add_argument("--restore-from", type=str,
                         help="Where restore model parameters from.")
     parser.add_argument("--gpu", type=int, default=0,
                         help="choose gpu device.")
     parser.add_argument("--set", type=str, default=SET,
                         help="choose evaluation set.")
-    parser.add_argument("--save", type=str, default=SAVE_PATH,
-                        help="Path to save result.")
+    parser.add_argument("--multi-scale", action='store_true')
     return parser.parse_args()
 
 
@@ -107,13 +96,10 @@ def main():
 
     gpu0 = args.gpu
 
-    if not os.path.exists(args.save):
-        os.makedirs(args.save)
-
     if args.model == 'Trans4PASS_plus_v1':
-        model = Trans4PASS_plus_v1(num_classes=args.num_classes, emb_chans=args.emb_chans)
+        model = Trans4PASS_plus_v1(num_classes=args.num_classes)
     elif args.model == 'Trans4PASS_plus_v2':
-        model = Trans4PASS_plus_v2(num_classes=args.num_classes, emb_chans=args.emb_chans)
+        model = Trans4PASS_plus_v2(num_classes=args.num_classes)
     else:
         raise ValueError
 
@@ -144,9 +130,12 @@ def main():
         image = image.cuda(gpu0)
         b, _, _, _ = image.shape
         output_temp = torch.zeros((b, NUM_CLASSES, h, w), dtype=image.dtype).cuda(gpu0)
-        scales = [1]  # [0.5,0.75,1.0,1.25,1.5,1.75] # ms
-        # scales = [0.75,1.0,1.75] # ms
-        # scales = [0.5,0.75,1.0,1.25,1.5,1.75] # ms
+        if args.multi_scale:
+            # scales = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]  # ms
+            # scales = [0.75, 1.0, 1.75]  # ms
+            raise Exception
+        else:
+            scales = [1]  # origin no scale
         for sc in scales:
             new_h, new_w = int(sc * h), int(sc * w)
             img_tem = nn.UpsamplingBilinear2d(size=(new_h, new_w))(image)
@@ -161,6 +150,7 @@ def main():
 
         save_vis = False
         if save_vis:
+            raise Exception
             output_col = colorize_mask(output)
             output = Image.fromarray(output.astype(np.uint8))
             name = name[0].split('/')[-1]
