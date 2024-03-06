@@ -1,6 +1,7 @@
 """Prepare Cityscapes dataset"""
 import logging
 import os
+import random
 
 import numpy as np
 import torch
@@ -20,34 +21,35 @@ class City13Segmentation(SegmentationDataset):
         assert (len(self.images) == len(self.mask_paths))
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
-        # self._key = np.array([0,1,2,3,4,5,6,7,8,9,10,11,11,12,12,12,-1,12,12])
-        self._key = np.array([-1, -1, -1, -1, -1,
+
+        self._key = np.array([-1, -1, -1, -1, -1, -1,
                               -1, -1, 0, 1, -1, -1,
                               2, 3, 4, -1, -1, -1,
                               5, -1, 6, 7, 8, 9,
                               10, 11, 11, 12, 12, 12,
                               -1, -1, -1, 12, 12])
+        self._mapping = np.array(range(-1, len(self._key) - 1)).astype('int32')
 
-    def _map19to13(self, mask):
+    def _class_to_index(self, mask):
         values = np.unique(mask)
-        new_mask = np.zeros_like(mask)
-        new_mask -= 1
         for value in values:
-            if value == 255 or value == -1:
-                new_mask[mask == value] = -1
-            else:
-                new_mask[mask == value] = self._key[value]
-        mask = new_mask
-        return mask
+            assert (value in self._mapping)
+        index = np.digitize(mask.ravel(), self._mapping, right=True)
+        return self._key[index].reshape(mask.shape)
 
     def _val_sync_transform_resize(self, img, mask):
+        w, h = img.size
+        x1 = random.randint(0, w - self.crop_size[1])
+        y1 = random.randint(0, h - self.crop_size[0])
+        img = img.crop((x1, y1, x1 + self.crop_size[1], y1 + self.crop_size[0]))
+        mask = mask.crop((x1, y1, x1 + self.crop_size[1], y1 + self.crop_size[0]))
+
         img, mask = self._img_transform(img), self._mask_transform(mask)
         return img, mask
 
     def __getitem__(self, index):
         img = Image.open(self.images[index]).convert('RGB')
         if self.mode == 'test':
-            # img, mask = self._img_transform(img), self._mask_transform(mask)
             if self.transform is not None:
                 img = self.transform(img)
             return img, os.path.basename(self.images[index])
@@ -64,7 +66,7 @@ class City13Segmentation(SegmentationDataset):
         return img, mask, os.path.basename(self.images[index])
 
     def _mask_transform(self, mask):
-        target = self._map19to13(np.array(mask).astype('int32'))
+        target = self._class_to_index(np.array(mask).astype('int32'))
         return torch.LongTensor(np.array(target).astype('int32'))
 
     def __len__(self):
@@ -113,6 +115,7 @@ def _get_city_pairs(folder, split='train'):
         val_img_folder = os.path.join(folder, 'leftImg8bit/val')
         val_mask_folder = os.path.join(folder, 'gtFine/val')
         img_paths, mask_paths = get_path_pairs(val_img_folder, val_mask_folder)
+
     return img_paths, mask_paths
 
 

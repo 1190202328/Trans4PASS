@@ -24,8 +24,6 @@ class DensePASSSegmentation(SegmentationDataset):
         assert (len(self.images) == len(self.mask_paths))
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
-        self.valid_classes = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22,
-                              23, 24, 25, 26, 27, 28, 31, 32, 33]
         self._key = np.array([-1, -1, -1, -1, -1, -1,
                               -1, -1, 0, 1, -1, -1,
                               2, 3, 4, -1, -1, -1,
@@ -43,11 +41,6 @@ class DensePASSSegmentation(SegmentationDataset):
 
     def _val_sync_transform_resize(self, img, mask):
         w, h = img.size
-        x1 = random.randint(0, w - self.crop_size[1])
-        y1 = random.randint(0, h - self.crop_size[0])
-        img = img.crop((x1, y1, x1 + self.crop_size[1], y1 + self.crop_size[0]))
-        mask = mask.crop((x1, y1, x1 + self.crop_size[1], y1 + self.crop_size[0]))
-
         # final transform
         img, mask = self._img_transform(img), self._mask_transform(mask)
         return img, mask
@@ -100,7 +93,6 @@ def _get_city_pairs(folder, split='train'):
                 if filename.endswith('.png'):
                     imgpath = os.path.join(root, filename)
                     foldername = os.path.basename(os.path.dirname(imgpath))
-                    # maskname = filename.replace('_.png', '_labelTrainIds.png')
                     maskname = filename.replace('_.png', '_labelTrainIds.png')
                     maskpath = os.path.join(mask_folder, foldername, maskname)
                     if os.path.isfile(imgpath) and os.path.isfile(maskpath):

@@ -24,7 +24,7 @@ from segmentron.utils.score import SegmentationMetric
 from segmentron.utils.filesystem import save_checkpoint
 from segmentron.utils.options import parse_args
 from segmentron.utils.default_setup import default_setup
-from segmentron.utils.visualize import show_flops_params
+from segmentron.utils.visualize import show_flops_params, get_color_pallete
 from segmentron.config import cfg
 from tabulate import tabulate
 
@@ -57,6 +57,8 @@ class Trainer(object):
         train_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='train', mode='train', **data_kwargs)
         val_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='val', mode='testval', **data_kwargs_testval)
         test_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='test', mode='testval', **data_kwargs_testval)
+        # --- monitor
+        test_dataset_2 = get_segmentation_dataset('densepass', split='val', mode='val', **data_kwargs_testval)
 
         self.classes = test_dataset.classes
 
@@ -70,6 +72,10 @@ class Trainer(object):
         test_sampler = make_data_sampler(test_dataset, False, args.distributed)
         test_batch_sampler = make_batch_data_sampler(test_sampler, cfg.TEST.BATCH_SIZE, drop_last=False)
 
+        # --- monitor
+        test_sampler_2 = make_data_sampler(test_dataset_2, False, args.distributed)
+        test_batch_sampler_2 = make_batch_data_sampler(test_sampler_2, 1, drop_last=False)
+
         self.train_loader = data.DataLoader(dataset=train_dataset,
                                             batch_sampler=train_batch_sampler,
                                             num_workers=cfg.DATASET.WORKERS,
@@ -78,10 +84,14 @@ class Trainer(object):
                                            batch_sampler=test_batch_sampler,
                                            num_workers=cfg.DATASET.WORKERS,
                                            pin_memory=True)
+        # --- monitor
+        self.test_loader_2 = data.DataLoader(dataset=test_dataset_2,
+                                             batch_sampler=test_batch_sampler_2,
+                                             num_workers=cfg.DATASET.WORKERS,
+                                             pin_memory=True)
 
         # create network
         self.model = get_segmentation_model().to(self.device)
-        logging.info(self.model)
 
         # print params and flops
         if get_rank() == 0:
@@ -131,6 +141,14 @@ class Trainer(object):
                                                              find_unused_parameters=False)
         # evaluation metrics
         self.metric = SegmentationMetric(train_dataset.num_class, args.distributed)
+        # --- monitor
+        self.best_val_mIoU = 0.
+        self.best_test_mIoU = 0.
+        self.cur_val_mIoU = 0.
+        self.cur_test_mIoU = 0.
+
+        self.best_test_2_mIoU = 0.
+        self.cur_test_2_mIoU = 0.
 
     def train(self):
         self.save_to_disk = get_rank() == 0
@@ -142,8 +160,6 @@ class Trainer(object):
 
         self.model.train()
         iteration = self.start_epoch * iters_per_epoch if self.start_epoch > 0 else 0
-        best_iou = 0
-        best_epoch = 0
         for (images, targets, _) in self.train_loader:
             epoch = iteration // iters_per_epoch + 1
             iteration += 1
@@ -182,14 +198,20 @@ class Trainer(object):
 
             if not self.args.skip_val and iteration % val_per_iters == 0:
                 # self.validation(epoch)
-                mIoU = self.test()
-                if mIoU > best_iou:
-                    best_iou = mIoU
-                    best_epoch = epoch
-                    # save best
-                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True)
+                self.model.eval()
+                self.test()
+                self.test_2()
+
+                if self.cur_test_mIoU > self.best_test_mIoU:
+                    self.best_test_mIoU = self.cur_test_mIoU
+                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True,
+                                    best_save_name='best_cs_model.pth')
+                if self.cur_test_2_mIoU > self.best_test_2_mIoU:
+                    self.best_test_2_mIoU = self.cur_test_2_mIoU
+                    save_checkpoint(self.args, self.model, epoch, self.optimizer, self.lr_scheduler, is_best=True,
+                                    best_save_name='best_dp_model.pth')
+
                 self.model.train()
-                logging.info(f'epoch={epoch}, current miou = {mIoU}, best_epoch={best_epoch}, best miou={best_iou}')
 
         total_training_time = time.time() - start_time
         total_training_str = str(datetime.timedelta(seconds=total_training_time))
@@ -209,17 +231,11 @@ class Trainer(object):
             target = target.to(self.device)
 
             with torch.no_grad():
-                if cfg.DATASET.MODE == 'val' or cfg.TEST.CROP_SIZE is None:
-                    output = model(image)[0]
-                else:
-                    size = image.size()[2:]
-                    assert cfg.TEST.CROP_SIZE[0] == size[0]
-                    assert cfg.TEST.CROP_SIZE[1] == size[1]
-                    output = model(image)[0]
+                output = model(image)[0]
 
             self.metric.update(output, target)
-            pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
-            logging.info("[EVAL] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
+            # pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
+            # logging.info("[EVAL] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
         pixAcc, mIoU = self.metric.get()
         logging.info("[EVAL END] Epoch: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(epoch, pixAcc * 100, mIoU * 100))
         synchronize()
@@ -237,21 +253,16 @@ class Trainer(object):
             target = target.to(self.device)
 
             with torch.no_grad():
-                if cfg.DATASET.MODE == 'test' or cfg.TEST.CROP_SIZE is None:
-                    output = model(image)[0]
-                else:
-                    size = image.size()[2:]
-                    assert cfg.TEST.CROP_SIZE[0] == size[0]
-                    assert cfg.TEST.CROP_SIZE[1] == size[1]
-                    output = model(image)[0]
+                output = model(image)[0]
 
             self.metric.update(output, target)
-            pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
+            # pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
             # logging.info("[TEST] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
 
         synchronize()
         pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
         logging.info("[TEST END]  pixAcc: {:.3f}, mIoU: {:.3f}".format(pixAcc * 100, mIoU * 100))
+        self.cur_test_mIoU = mIoU
 
         headers = ['class id', 'class name', 'iou']
         table = []
@@ -259,7 +270,46 @@ class Trainer(object):
             table.append([cls_name, category_iou[i]])
         logging.info('Category iou: \n {}'.format(tabulate(table, headers, tablefmt='grid',
                                                            showindex="always", numalign='center', stralign='center')))
-        return mIoU
+
+    def test_2(self, vis=False):
+        self.metric.reset()
+        if self.args.distributed:
+            model = self.model.module
+        else:
+            model = self.model
+        torch.cuda.empty_cache()
+        model.eval()
+        with torch.no_grad():
+            for i, (image, target, filename) in enumerate(self.test_loader_2):
+                image = image.to(self.device)
+                target = target.to(self.device)
+                output = model(image)[0]
+                if vis:
+                    vis_pred = output[0].permute(1, 2, 0).argmax(-1).data.cpu().numpy()
+                    vis_pred = get_color_pallete(vis_pred, dataset='cityscape')
+                    save_path = os.path.join(cfg.TRAIN.MODEL_SAVE_DIR, 'vis')
+                    if not os.path.exists(save_path):
+                        os.makedirs(save_path)
+                    vis_pred.save(os.path.join(save_path, str(i) + '.png'))
+                    print("[VIS TEST] Sample: {:d}".format(i + 1))
+                    continue
+                self.metric.update(output, target)
+                # pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
+                # logging.info("[TEST] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
+
+            synchronize()
+            pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
+            logging.info("[TEST DensePASS END]  pixAcc: {:.3f}, mIoU: {:.3f}".format(pixAcc * 100, mIoU * 100))
+            self.cur_test_2_mIoU = mIoU
+
+        headers = ['class id', 'class name', 'iou']
+        table = []
+        for i, cls_name in enumerate(self.classes):
+            table.append([cls_name, category_iou[i]])
+        logging.info('Category iou: \n {}'.format(tabulate(table, headers, tablefmt='grid',
+                                                           showindex="always", numalign='center', stralign='center')))
+        torch.cuda.empty_cache()
+        model.train()
 
 
 if __name__ == '__main__':

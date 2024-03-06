@@ -21,8 +21,7 @@ class CitySegmentation(SegmentationDataset):
         assert (len(self.images) == len(self.mask_paths))
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
-        self.valid_classes = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22,
-                              23, 24, 25, 26, 27, 28, 31, 32, 33]
+
         self._key = np.array([-1, -1, -1, -1, -1, -1,
                               -1, -1, 0, 1, -1, -1,
                               2, 3, 4, -1, -1, -1,

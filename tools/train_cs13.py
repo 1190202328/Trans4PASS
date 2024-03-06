@@ -1,13 +1,8 @@
-"""
-Train on Cityscapes13
-"""
 import copy
 import datetime
 import os
 import sys
 import time
-
-# os.chdir(sys.path[0])
 
 cur_path = os.path.abspath(os.path.dirname(__file__))
 root_path = os.path.split(cur_path)[0]
@@ -60,7 +55,8 @@ class Trainer(object):
                                'crop_size': cfg.TEST.CROP_SIZE}
 
         train_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='train', mode='train', **data_kwargs)
-        test_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='val', mode='testval', **data_kwargs_testval)
+        val_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='val', mode='testval', **data_kwargs_testval)
+        test_dataset = get_segmentation_dataset(cfg.DATASET.NAME, split='test', mode='testval', **data_kwargs_testval)
         # --- monitor
         test_dataset_2 = get_segmentation_dataset('densepass13', split='val', mode='val', **data_kwargs_testval)
 
@@ -96,7 +92,6 @@ class Trainer(object):
 
         # create network
         self.model = get_segmentation_model().to(self.device)
-        logging.info(self.model)
 
         # print params and flops
         if get_rank() == 0:
@@ -260,16 +255,6 @@ class Trainer(object):
             with torch.no_grad():
                 output = model(image)[0]
 
-            if vis:
-                vis_pred = output[0].permute(1, 2, 0).argmax(-1).data.cpu().numpy()
-                vis_pred = get_color_pallete(vis_pred, dataset='cityscape13')
-                save_path = os.path.join(cfg.TRAIN.MODEL_SAVE_DIR, 'vis')
-                if not os.path.exists(save_path):
-                    os.makedirs(save_path)
-                vis_pred.save(os.path.join(save_path, str(i) + '.png'))
-                print("[VIS TEST] Sample: {:d}".format(i + 1))
-                continue
-
             self.metric.update(output, target)
             # pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
             # logging.info("[TEST] Sample: {:d}, pixAcc: {:.3f}, mIoU: {:.3f}".format(i + 1, pixAcc * 100, mIoU * 100))
@@ -314,7 +299,7 @@ class Trainer(object):
 
             synchronize()
             pixAcc, mIoU, category_iou = self.metric.get(return_category_iou=True)
-            logging.info("[TEST DensePASS10 END]  pixAcc: {:.3f}, mIoU: {:.3f}".format(pixAcc * 100, mIoU * 100))
+            logging.info("[TEST DensePASS13 END]  pixAcc: {:.3f}, mIoU: {:.3f}".format(pixAcc * 100, mIoU * 100))
             self.cur_test_2_mIoU = mIoU
 
         headers = ['class id', 'class name', 'iou']

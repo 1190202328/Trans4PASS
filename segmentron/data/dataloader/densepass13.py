@@ -1,4 +1,3 @@
-"""Prepare DensePASS13 dataset"""
 import logging
 import os
 
@@ -15,13 +14,12 @@ class DensePASS13Segmentation(SegmentationDataset):
     NUM_CLASS = 13
 
     def __init__(self, root='/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS', split='val',
-                 mode=None, transform=None, fov=360, **kwargs):
+                 mode=None, transform=None, **kwargs):
         super(DensePASS13Segmentation, self).__init__(root, split, mode, transform, **kwargs)
         assert os.path.exists(self.root), "Please put dataset in {SEG_ROOT}/datasets/DensePASS"
         self.images, self.mask_paths = _get_city_pairs(self.root, self.split)
         self.crop_size = [400, 2048]  # for inference only
         assert (len(self.images) == len(self.mask_paths))
-        self.fov = fov
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
         self._key = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 12, 12, -1, 12, 12])
@@ -31,7 +29,7 @@ class DensePASS13Segmentation(SegmentationDataset):
         new_mask = np.zeros_like(mask)
         new_mask -= 1
         for value in values:
-            if value == 255:
+            if value == 255 or value <= 1:
                 new_mask[mask == value] = -1
             else:
                 new_mask[mask == value] = self._key[value]
