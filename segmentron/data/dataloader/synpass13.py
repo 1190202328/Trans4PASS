@@ -8,7 +8,7 @@ import torch
 from PIL import Image
 from torch.utils import data
 
-from segmentron.data.dataloader.seg_data_base import SegmentationDataset
+from .seg_data_base import SegmentationDataset
 
 
 class SynPASS13Segmentation(SegmentationDataset):
@@ -24,7 +24,7 @@ class SynPASS13Segmentation(SegmentationDataset):
         assert (len(self.images) == len(self.mask_paths))
         if len(self.images) == 0:
             raise RuntimeError("Found 0 images in subfolders of:" + root + "\n")
-        # self._key = np.array([-1,2,4,-1,11,5,-1,0,1,8,12,3,7,10,-1,-1,-1,-1,6,-1,-1,-1,9])
+
         self._key = np.array([-1, 2, 4, -1, 11, 5, 0, 0, 1, 8, 12, 3, 7, 10, -1, -1, -1, -1, 6, -1, -1, -1, 9])
 
     def _map23to13(self, mask):
@@ -32,7 +32,7 @@ class SynPASS13Segmentation(SegmentationDataset):
         new_mask = np.zeros_like(mask)
         new_mask -= 1
         for value in values:
-            if value == 255:
+            if value == 255 or value <= -1:
                 new_mask[mask == value] = -1
             else:
                 new_mask[mask == value] = self._key[value]
@@ -40,16 +40,6 @@ class SynPASS13Segmentation(SegmentationDataset):
         return mask
 
     def _val_sync_transform_resize(self, img, mask):
-        # w, h = img.size
-        # x1 = random.randint(0, w - self.crop_size[1])
-        # y1 = random.randint(0, h - self.crop_size[0])
-        # img = img.crop((x1, y1, x1 + self.crop_size[1], y1 + self.crop_size[0]))
-        # mask = mask.crop((x1, y1, x1 + self.crop_size[1], y1 + self.crop_size[0]))
-        # resize_size = [1024, 512]
-        # img = img.resize(resize_size, Image.BICUBIC)
-        # mask = mask.resize(resize_size, Image.NEAREST)
-
-        # final transform
         img, mask = self._img_transform(img), self._mask_transform(mask)
         return img, mask
 
