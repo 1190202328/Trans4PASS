@@ -9,8 +9,6 @@ from collections import OrderedDict
 
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tensorboardX import SummaryWriter
@@ -23,28 +21,14 @@ from dataset.dp13_dataset import densepass13DataSet, densepass13TestDataSet
 from dataset.sp13_dataset import synpass13DataSet
 from model.discriminator import FCDiscriminator
 from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
+from utils.init import set_random_seed, freeze_model, unfreeze_model
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
 MODEL = 'Trans4PASS_plus_v2'
 EMB_CHANS = 128
 BATCH_SIZE = 4
-ITER_SIZE = 1
-NUM_WORKERS = BATCH_SIZE
-
-# need to change
-SOURCE_NAME = 'SP13'  # CS13, SP13
-RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/synpass13/trans4pass_plus_small_512x512/trans4pass_plus_small_512x512.pth'
-
-if SOURCE_NAME == 'CS13':
-    DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
-    DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
-elif SOURCE_NAME == 'SP13':
-    DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS'
-    DATA_LIST_PATH = 'dataset/synpass_list/train.txt'
-else:
-    raise Exception
-
+NUM_WORKERS = BATCH_SIZE * 2
 TARGET_NAME = 'DP13'
 IGNORE_LABEL = 255
 INPUT_SIZE = '1024,512'
@@ -54,27 +38,21 @@ DATA_LIST_PATH_TARGET_TEST = 'dataset/densepass_list/val.txt'
 INPUT_SIZE_TARGET = '2048,400'
 TARGET_TRANSFORM = 'FixScaleRandomCropWH'
 INPUT_SIZE_TARGET_TEST = '2048,400'
-LEARNING_RATE = 2.5e-6
+LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
 NUM_CLASSES = 13
 NUM_STEPS = 10000
-NUM_STEPS_STOP = 8000  # early stopping
+NUM_STEPS_STOP = int(NUM_STEPS * 0.8)  # early stopping
 NUM_PROTOTYPE = 50
 POWER = 0.9
 RANDOM_SEED = 1234
 SAVE_NUM_IMAGES = 2
-SAVE_PRED_EVERY = 1000
-DIR_NAME = '{}2{}_{}_WarmUp/'.format(SOURCE_NAME, TARGET_NAME, MODEL)
-SNAPSHOT_DIR = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/' + DIR_NAME
+SAVE_PRED_EVERY = int(NUM_STEPS * 0.025)  # for example 10000->250
 WEIGHT_DECAY = 0.00001
-# LOG_DIR = './log'
-LOG_DIR = SNAPSHOT_DIR
-SAVE_PATH = './result/' + DIR_NAME
 
 LEARNING_RATE_D = 1e-4
-LAMBDA_ADV_TARGET = 0.1
+LAMBDA_ADV_TARGET = 0.001
 
-SOURCE = 'cityscapes13'
 TARGET = 'densepass13'
 SET = 'train'
 
@@ -93,19 +71,17 @@ def get_arguments():
                         help="available options : Trans4PASS_plus_v1, Trans4PASS_plus_v2")
     parser.add_argument("--emb-chans", type=int, default=EMB_CHANS,
                         help="Number of channels in decoder head.")
-    parser.add_argument("--source", type=str, default=SOURCE,
+    parser.add_argument("--source", type=str,
                         help="available options : cityscapes, synpass, structured3d, stanford2d3dpin")
     parser.add_argument("--target", type=str, default=TARGET,
                         help="available options : densepass, stanford2d3dpan")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step.")
-    parser.add_argument("--iter-size", type=int, default=ITER_SIZE,
-                        help="Accumulate gradients for ITER_SIZE iterations.")
     parser.add_argument("--num-workers", type=int, default=NUM_WORKERS,
                         help="number of workers for multithread dataloading.")
-    parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
+    parser.add_argument("--data-dir", type=str, default='',
                         help="Path to the directory containing the source dataset.")
-    parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
+    parser.add_argument("--data-list", type=str, default='',
                         help="Path to the file listing the images in the source dataset.")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
@@ -118,8 +94,6 @@ def get_arguments():
     parser.add_argument("--data-list-target-test", type=str, default=DATA_LIST_PATH_TARGET_TEST,
                         help="Path to the file listing the images in the target val dataset.")
     parser.add_argument("--input-size-target", type=str, default=INPUT_SIZE_TARGET,
-                        help="Comma-separated string with height and width of target images.")
-    parser.add_argument("--input-size-target-test", type=str, default=INPUT_SIZE_TARGET_TEST,
                         help="Comma-separated string with height and width of target images.")
     parser.add_argument("--is-training", action="store_true",
                         help="Whether to updates the running means and variances during the training.")
@@ -149,26 +123,24 @@ def get_arguments():
                         help="Whether to randomly scale the inputs during the training.")
     parser.add_argument("--random-seed", type=int, default=RANDOM_SEED,
                         help="Random seed to have reproducible results.")
-    parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
+    parser.add_argument("--restore-from", type=str, default='',
                         help="Where restore model parameters from.")
     parser.add_argument("--save-num-images", type=int, default=SAVE_NUM_IMAGES,
                         help="How many images to save.")
     parser.add_argument("--save-pred-every", type=int, default=SAVE_PRED_EVERY,
                         help="Save summaries and checkpoint every often.")
-    parser.add_argument("--snapshot-dir", type=str, default=SNAPSHOT_DIR,
+    parser.add_argument("--snapshot-dir", type=str, default='',
                         help="Where to save snapshots of the model.")
     parser.add_argument("--weight-decay", type=float, default=WEIGHT_DECAY,
                         help="Regularisation parameter for L2-loss.")
     parser.add_argument("--cpu", action='store_true', help="choose to use cpu device.")
-    parser.add_argument("--tensorboard", action='store_true', help="choose whether to use tensorboard.")
-    parser.add_argument("--log-dir", type=str, default=LOG_DIR,
+    parser.add_argument("--tensorboard", action='store_false', help="choose whether to use tensorboard.")
+    parser.add_argument("--log-dir", type=str, default='',
                         help="Path to the directory of log.")
     parser.add_argument("--set", type=str, default=SET,
                         help="choose adaptation set.")
     parser.add_argument("--continue-train", action="store_true",
                         help="continue training")
-    parser.add_argument("--save", type=str, default=SAVE_PATH,
-                        help="Path to save result.")
     return parser.parse_args()
 
 
@@ -194,10 +166,6 @@ def setup_logger(name, save_dir, filename="log.txt", mode='w'):
     logging.root.addHandler(ch)
 
 
-TIME_STAMP = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
-setup_logger('Trans4PASS', SNAPSHOT_DIR, filename=f'{TIME_STAMP}_log.txt')
-
-
 def lr_poly(base_lr, iter, max_iter, power):
     return base_lr * ((1 - float(iter) / max_iter) ** (power))
 
@@ -216,30 +184,37 @@ def adjust_learning_rate_D(optimizer, i_iter):
         optimizer.param_groups[1]['lr'] = lr * 10
 
 
-def amp_backward(loss, optimizer, retain_graph=False):
-    loss.backward(retain_graph=retain_graph)
-
-
-def load_my_state_dict(model, state_dict):  # custom function to load model when not all dict elements
-    own_state = model.state_dict()
-    for name, param in state_dict.items():
-        if name not in own_state:
-            if name.startswith("module."):
-                own_state[name.split("module.")[-1]].copy_(param)
-            else:
-                logging.info(name, " not loaded")
-                continue
-        else:
-            own_state[name].copy_(param)
-    return model
-
-
 def main():
     """Create the model and start the training."""
+    # set random seed
+    set_random_seed(args.random_seed)
+
+    # change args
+    SOURCE_NAME = args.source
+    if SOURCE_NAME == 'CS13':
+        DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
+        DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
+        RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/cityscapes13/trans4pass_plus_small_512x512/best_model.pth'
+    elif SOURCE_NAME == 'SP13':
+        DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS'
+        DATA_LIST_PATH = 'dataset/synpass_list/train.txt'
+        RESTORE_FROM = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/workdirs/synpass13/trans4pass_plus_small_512x512/best_model.pth'
+    else:
+        raise Exception
+    args.data_dir = DATA_DIRECTORY
+    args.data_list = DATA_LIST_PATH
+    args.restore_from = RESTORE_FROM
+
+    DIR_NAME = 'my_{}2{}_{}_WarmUp_'.format(SOURCE_NAME, TARGET_NAME, MODEL)
+    SNAPSHOT_DIR = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/' + DIR_NAME
+    LOG_DIR = SNAPSHOT_DIR
+    exp_name = args.snapshot_dir
+    args.snapshot_dir = SNAPSHOT_DIR + exp_name
+    args.log_dir = LOG_DIR + exp_name
+    TIME_STAMP = time.strftime('%Y-%m-%d-%H-%M', time.localtime())
+    setup_logger('Trans4PASS', args.log_dir, f'{TIME_STAMP}_log.txt')
 
     device = torch.device("cuda" if not args.cpu else "cpu")
-    cudnn.benchmark = True
-    cudnn.enabled = True
 
     w, h = map(int, args.input_size.split(','))
     input_size = (w, h)
@@ -247,7 +222,7 @@ def main():
     w, h = map(int, args.input_size_target.split(','))
     input_size_target = (w, h)
 
-    w, h = map(int, args.input_size_target_test.split(','))
+    w, h = map(int, INPUT_SIZE_TARGET_TEST.split(','))
     input_size_target_test = (w, h)
 
     Iter = 0
@@ -274,47 +249,33 @@ def main():
         else:
             new_saved_state_dict[k] = v
     saved_state_dict = new_saved_state_dict
-    if args.continue_train:
-        if list(saved_state_dict.keys())[0].split('.')[0] == 'module':
-            for key in saved_state_dict.keys():
-                saved_state_dict['.'.join(key.split('.')[1:])] = saved_state_dict.pop(key)
-        model.load_state_dict(saved_state_dict)
-    else:
-        # model = load_my_state_dict(model, saved_state_dict)
-        msg = model.load_state_dict(saved_state_dict, strict=False)
-        logging.info(msg)
+
+    msg = model.load_state_dict(saved_state_dict, strict=False)
+    logging.info(msg)
 
     # init D
     model_D = FCDiscriminator(num_classes=args.num_classes).to(device)
 
-    if args.continue_train:
-        model_weights_path = args.restore_from
-        temp = model_weights_path.split('.')
-        temp[-2] = temp[-2] + '_D'
-        model_D_weights_path = '.'.join(temp)
-        model_D.load_state_dict(torch.load(model_D_weights_path))
-        temp = model_weights_path.split('.')
-        temp = temp[-2][-9:]
-        Iter = int(temp.split('_')[1]) + 1
-
-    model.train()
+    unfreeze_model(model)
     model.to(device)
 
-    model_D.train()
+    unfreeze_model(model_D)
     model_D.to(device)
 
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
+    else:
+        pass
 
     # init data loader
     if SOURCE_NAME == 'CS13':
         trainset = CS13SrcDataSet(args.data_dir, args.data_list,
-                                  max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                  max_iters=args.num_steps * args.batch_size,
                                   crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror,
                                   mean=IMG_MEAN, set=args.set)
     elif SOURCE_NAME == 'SP13':
         trainset = synpass13DataSet(args.data_dir, args.data_list,
-                                    max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                    max_iters=args.num_steps * args.batch_size,
                                     crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror,
                                     mean=IMG_MEAN, set=args.set)
     else:
@@ -323,7 +284,7 @@ def main():
                                   pin_memory=True)
     trainloader_iter = enumerate(trainloader)
     targetset = densepass13DataSet(args.data_dir_target, args.data_list_target,
-                                   max_iters=args.num_steps * args.iter_size * args.batch_size,
+                                   max_iters=args.num_steps * args.batch_size,
                                    crop_size=input_size_target, scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
                                    set=args.set,
                                    trans=TARGET_TRANSFORM)
@@ -339,7 +300,6 @@ def main():
                                            mean=IMG_MEAN, scale=False, mirror=False, set='val')
     testloader = data.DataLoader(targettestset, batch_size=1, shuffle=False, pin_memory=True)
 
-    model.train()
     # init optimizer
     optimizer = optim.SGD(model.optim_parameters(args),
                           lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -352,11 +312,7 @@ def main():
 
     bce_loss = torch.nn.BCEWithLogitsLoss()
     seg_loss = torch.nn.CrossEntropyLoss(ignore_index=255)
-    # L1_loss = torch.nn.L1Loss(reduction='none')
-
-    interp = nn.Upsample(size=(input_size[1], input_size[0]), mode='bilinear', align_corners=True)
-    interp_target = nn.Upsample(size=(input_size_target[1], input_size_target[0]), mode='bilinear', align_corners=True)
-    # test_interp = nn.Upsample(size=(1024, 2048), mode='bilinear', align_corners=True)
+    L1_loss = torch.nn.L1Loss(reduction='none')
 
     # labels for adversarial training
     source_label = 0
@@ -375,73 +331,65 @@ def main():
         loss_adv_target_value = 0
         loss_D_value = 0
 
+        # reset optimizer
         optimizer.zero_grad()
         adjust_learning_rate(optimizer, i_iter)
 
         optimizer_D.zero_grad()
         adjust_learning_rate_D(optimizer_D, i_iter)
 
-        for sub_i in range(args.iter_size):
-            # train G
-            for param in model_D.parameters():
-                param.requires_grad = False
+        # get data
+        _, batch_source = trainloader_iter.__next__()
+        images_source, labels_source, _, _ = batch_source
+        images_source = images_source.to(device)
+        labels_source = labels_source.long().to(device)
 
-            # train with source
-            _, batch = trainloader_iter.__next__()
-            images, labels, _, _ = batch
-            images = images.to(device)
-            labels = labels.long().to(device)
+        _, batch_target = targetloader_iter.__next__()
+        images_target, _, _ = batch_target
+        images_target = images_target.to(device)
 
-            src_features, pred = model(images)  # src_feature = [c1, c2, c3, c4]
-            src_feature = sum(src_features)
+        # train G
+        freeze_model(model_D)
 
-            pred = interp(pred)
-            loss_seg = seg_loss(pred, labels)
-            loss = loss_seg
+        # train with source
+        _, pred_source = model(images_source)  # src_feature = [c1, c2, c3, c4]
 
-            # proper normalization
-            loss = loss / args.iter_size
-            amp_backward(loss, optimizer)
-            loss_seg_value += loss_seg.item() / args.iter_size
+        loss_seg = seg_loss(pred_source, labels_source)
+        loss = loss_seg
 
-            # === train with target
+        # proper normalization
+        loss.backward()
+        loss_seg_value += loss_seg.item()
 
-            _, batch = targetloader_iter.__next__()
-            images, _, _ = batch
-            images = images.to(device)
+        # === train with target
+        _, pred_target = model(images_target)
 
-            trg_features, pred_target = model(images)
-            trg_feature = sum(trg_features)
+        D_out = model_D(F.softmax(pred_target, dim=1))
+        loss_adv_target = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(source_label).to(device))
+        loss = args.lambda_adv_target * loss_adv_target
+        loss.backward()
+        loss_adv_target_value += loss_adv_target.item()
 
-            pred_target = interp_target(pred_target)
-            D_out = model_D(F.softmax(pred_target, dim=1))
-            loss_adv_target = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(source_label).to(device))
-            loss = args.lambda_adv_target * loss_adv_target
-            loss = loss / args.iter_size
-            amp_backward(loss, optimizer)
-            loss_adv_target_value += loss_adv_target.item() / args.iter_size
+        # === train D
+        unfreeze_model(model_D)
 
-            # === train D
-            for param in model_D.parameters():
-                param.requires_grad = True
+        # train with source
+        pred_source = pred_source.detach()
+        D_out = model_D(F.softmax(pred_source, dim=1))
 
-            # train with source
-            pred = pred.detach()
-            D_out = model_D(F.softmax(pred, dim=1))
+        loss_D = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(source_label).to(device))
+        loss_D = loss_D / 2
+        loss_D.backward()
+        loss_D_value += loss_D.item()
 
-            loss_D = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(source_label).to(device))
-            loss_D = loss_D / args.iter_size / 2
-            amp_backward(loss_D, optimizer_D)
-            loss_D_value += loss_D.item()
+        # train with target
+        pred_target = pred_target.detach()
+        D_out = model_D(F.softmax(pred_target, dim=1))
 
-            # train with target
-            pred_target = pred_target.detach()
-            D_out = model_D(F.softmax(pred_target, dim=1))
-
-            loss_D = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(target_label).to(device))
-            loss_D = loss_D / args.iter_size / 2
-            amp_backward(loss_D, optimizer_D)
-            loss_D_value += loss_D.item()
+        loss_D = bce_loss(D_out, torch.FloatTensor(D_out.data.size()).fill_(target_label).to(device))
+        loss_D = loss_D / 2
+        loss_D.backward()
+        loss_D_value += loss_D.item()
 
         optimizer.step()
         optimizer_D.step()
@@ -449,7 +397,7 @@ def main():
         if args.tensorboard:
             scalar_info = {
                 'loss_seg': loss_seg_value,
-                'loss_adv_target': loss_adv_target_value,
+                'loss_adv_D': loss_adv_target_value,
                 'loss_D': loss_D_value,
                 'miou_T': mIoU
             }
@@ -461,38 +409,31 @@ def main():
             logging.info('iter = {0:8d}/{1:8d}, loss_seg = {2:.3f}, loss_adv = {3:.3f} loss_D = {4:.3f}'.format(
                 i_iter, args.num_steps, loss_seg_value, loss_adv_target_value, loss_D_value, ))
 
-        if i_iter >= args.num_steps_stop:
-            logging.info('save model ...')
-            torch.save(model.state_dict(),
-                       osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '.pth'))
-            torch.save(model_D.state_dict(),
-                       osp.join(args.snapshot_dir, TIME_STAMP + '_CS_' + str(args.num_steps_stop) + '_D.pth'))
-            break
-
         if i_iter % args.save_pred_every == 0 and i_iter != 0:
             logging.info('taking snapshot ...')
-            # if not os.path.exists(args.save):
-            #     os.makedirs(args.save)
-            model.eval()
+            freeze_model(model)
             hist = np.zeros((args.num_classes, args.num_classes))
             for index, batch in enumerate(testloader):
                 image, label, _, name = batch
                 with torch.no_grad():
-                    output1, output2 = model(Variable(image).to(device))
-                    # output = test_interp(output2).cpu().data[0].numpy()
+                    _, output2 = model(Variable(image).to(device))
                 output = output2.cpu().data[0].numpy()
                 output = output.transpose(1, 2, 0)
                 output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
                 label = label.cpu().data[0].numpy()
                 hist += fast_hist(label.flatten(), output.flatten(), args.num_classes)
+            best_miou_str = '\n' + '-' * 10 + '\n'
             mIoUs = per_class_iu(hist)
             for ind_class in range(args.num_classes):
-                logging.info('===>{:<15}:\t{}'.format(NAME_CLASSES[ind_class], str(round(mIoUs[ind_class] * 100, 2))))
+                temp_str = '===>{:<15}:\t{}'.format(NAME_CLASSES[ind_class], str(round(mIoUs[ind_class] * 100, 2)))
+                logging.info(temp_str)
+                best_miou_str += f'{temp_str}\n'
             mIoU = round(np.nanmean(mIoUs) * 100, 2)
             logging.info('===> mIoU: ' + str(mIoU))
-            if mIoU > bestIoU:
+            best_miou_str += f'best miou = {mIoU}, best iter = {i_iter}\n'
+            if mIoU >= bestIoU:
                 bestIoU = mIoU
-                pre_filename = osp.join(args.snapshot_dir, TIME_STAMP + '_Best*.pth')
+                pre_filename = osp.join(args.snapshot_dir + 'best*.pth')
                 pre_filename = glob.glob(pre_filename)
                 try:
                     for p in pre_filename:
@@ -500,12 +441,20 @@ def main():
                 except OSError as e:
                     logging.info(e)
                 torch.save(model.state_dict(),
-                           osp.join(args.snapshot_dir, TIME_STAMP + '_Best{}2{}_{}iter_{}miou.pth'.format(
-                               SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
+                           osp.join(args.snapshot_dir, 'best.pth'))
                 torch.save(model_D.state_dict(),
-                           osp.join(args.snapshot_dir, TIME_STAMP + '_Best{}2{}_{}iter_D_{}miou.pth'.format(
-                               SOURCE_NAME, TARGET_NAME, str(i_iter), str(bestIoU))))
-            model.train()
+                           osp.join(args.snapshot_dir, 'best_D.pth'))
+                with open(osp.join(args.snapshot_dir, 'best_miou.txt'), mode='w', encoding='utf-8') as f:
+                    f.write(best_miou_str)
+            unfreeze_model(model)
+
+        if i_iter >= args.num_steps_stop:
+            logging.info('save model ...')
+            torch.save(model.state_dict(),
+                       osp.join(args.snapshot_dir, 'latest.pth'))
+            torch.save(model_D.state_dict(),
+                       osp.join(args.snapshot_dir, 'latest_D.pth'))
+            break
 
     if args.tensorboard:
         writer.close()

@@ -40,9 +40,8 @@ class synpass13DataSet(data.Dataset):
     def _map23to13(self, mask):
         values = np.unique(mask)
         new_mask = np.ones_like(mask) * 255
-        # new_mask -= 1
         for value in values:
-            if value == 255:
+            if value == 255 or value <= -1:
                 new_mask[mask == value] = 255
             else:
                 new_mask[mask == value] = self._key[value]

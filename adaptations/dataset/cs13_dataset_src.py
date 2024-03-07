@@ -30,8 +30,7 @@ class CS13SrcDataSet(data.Dataset):
                 "label": label_file,
                 "name": name
             })
-        # self._key = np.array([0,1,2,3,4,5,6,7,8,9,10,11,11,12,12,12,255,12,12])
-
+        # map to 13 class
         self._key = np.array([255, 255, 255, 255, 255,
                               255, 255, 0, 1, 255, 255,
                               2, 3, 4, 255, 255, 255,
@@ -45,9 +44,8 @@ class CS13SrcDataSet(data.Dataset):
     def _map19to13(self, mask):
         values = np.unique(mask)
         new_mask = np.ones_like(mask) * 255
-        # new_mask -= 1
         for value in values:
-            if value == 255:
+            if value == 255 or value <= -1:
                 new_mask[mask == value] = 255
             else:
                 new_mask[mask == value] = self._key[value]
