@@ -5,6 +5,7 @@ import os
 import os.path as osp
 import sys
 import time
+from collections import OrderedDict
 
 import numpy as np
 import torch
@@ -15,8 +16,9 @@ from torch.autograd import Variable
 from torch.utils import data
 
 from compute_iou import fast_hist, per_class_iu
-from dataset.cs_dataset_src import CSSrcDataSet
-from dataset.densepass_dataset import densepassDataSet, densepassTestDataSet
+from dataset.cs13_dataset_src import CS13SrcDataSet
+from dataset.dp13_dataset import densepass13DataSet, densepass13TestDataSet
+from dataset.sp13_dataset import synpass13DataSet
 from model.discriminator import FCDiscriminator
 from model.trans4passplus import Trans4PASS_plus_v1, Trans4PASS_plus_v2
 from utils.init import set_random_seed, freeze_model, unfreeze_model
@@ -26,12 +28,8 @@ IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32
 MODEL = 'Trans4PASS_plus_v2'
 EMB_CHANS = 128
 BATCH_SIZE = 2
-NUM_WORKERS = 0
-SOURCE_NAME = 'CS'
-DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
-DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
-TARGET_NAME = 'DP'
-
+NUM_WORKERS = BATCH_SIZE * 2
+TARGET_NAME = 'DP13'
 IGNORE_LABEL = 255
 INPUT_SIZE = '1024,512'
 DATA_DIRECTORY_TARGET = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/DensePASS/DensePASS'
@@ -42,7 +40,7 @@ TARGET_TRANSFORM = 'FixScaleRandomCropWH'
 INPUT_SIZE_TARGET_TEST = '2048,400'
 LEARNING_RATE = 2.5e-6
 MOMENTUM = 0.9
-NUM_CLASSES = 19
+NUM_CLASSES = 13
 NUM_STEPS = 100000
 NUM_STEPS_STOP = int(NUM_STEPS * 0.8)  # early stopping
 NUM_PROTOTYPE = 50
@@ -50,37 +48,17 @@ POWER = 0.9
 RANDOM_SEED = 1234
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 250
-DIR_NAME = 'my_{}2{}_{}_SSL_'.format(SOURCE_NAME, TARGET_NAME, MODEL)
-SNAPSHOT_DIR = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/' + DIR_NAME
 WEIGHT_DECAY = 0.0005
-LOG_DIR = SNAPSHOT_DIR
 
 LEARNING_RATE_D = 1e-4
 LAMBDA_ADV_TARGET = 0.001
 LAMBDA_SSL = 1
-TARGET = 'densepass'
+
+TARGET = 'densepass13'
 SET = 'train'
 
-NAME_CLASSES = [
-    "road",
-    "sidewalk",
-    "building",
-    "wall",
-    "fence",
-    "pole",
-    "light",
-    "sign",
-    "vegetation",
-    "terrain",
-    "sky",
-    "person",
-    "rider",
-    "car",
-    "truck",
-    "bus",
-    "train",
-    "motocycle",
-    "bicycle"]
+NAME_CLASSES = ['road', 'sidewalk', 'building', 'wall', 'fence', 'pole', 'traffic light',
+                'traffic sign', 'vegetation', 'terrain', 'sky', 'person', 'car']
 
 
 def get_arguments():
@@ -91,18 +69,20 @@ def get_arguments():
     """
     parser = argparse.ArgumentParser(description="Network")
     parser.add_argument("--model", type=str, default=MODEL,
-                        help="available options : Trans4PASS_v1, Trans4PASS_v2")
+                        help="available options : Trans4PASS_plus_v1, Trans4PASS_plus_v2")
     parser.add_argument("--emb-chans", type=int, default=EMB_CHANS,
                         help="Number of channels in decoder head.")
+    parser.add_argument("--source", type=str,
+                        help="available options : cityscapes, synpass, structured3d, stanford2d3dpin")
     parser.add_argument("--target", type=str, default=TARGET,
-                        help="available options : cityscapes")
+                        help="available options : densepass, stanford2d3dpan")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step.")
     parser.add_argument("--num-workers", type=int, default=NUM_WORKERS,
                         help="number of workers for multithread dataloading.")
-    parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
+    parser.add_argument("--data-dir", type=str, default='',
                         help="Path to the directory containing the source dataset.")
-    parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
+    parser.add_argument("--data-list", type=str, default='',
                         help="Path to the file listing the images in the source dataset.")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
@@ -212,6 +192,21 @@ def main():
     set_random_seed(args.random_seed)
 
     # change args
+    SOURCE_NAME = args.source
+    if SOURCE_NAME == 'CS13':
+        DATA_DIRECTORY = '/nfs/s3_common_dataset/cityscapes'
+        DATA_LIST_PATH = 'dataset/cityscapes_list/train.txt'
+    elif SOURCE_NAME == 'SP13':
+        DATA_DIRECTORY = '/nfs/ofs-902-1/object-detection/jiangjing/datasets/SynPASS/SynPASS'
+        DATA_LIST_PATH = 'dataset/synpass_list/train.txt'
+    else:
+        raise Exception
+    args.data_dir = DATA_DIRECTORY
+    args.data_list = DATA_LIST_PATH
+
+    DIR_NAME = 'my_{}2{}_{}_SSL_'.format(SOURCE_NAME, TARGET_NAME, MODEL)
+    SNAPSHOT_DIR = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/' + DIR_NAME
+    LOG_DIR = SNAPSHOT_DIR
     exp_name = args.snapshot_dir
     args.snapshot_dir = SNAPSHOT_DIR + exp_name
     args.log_dir = LOG_DIR + exp_name
@@ -244,6 +239,15 @@ def main():
     saved_state_dict = torch.load(args.restore_from, map_location=lambda storage, loc: storage)
     if 'state_dict' in saved_state_dict.keys():
         saved_state_dict = saved_state_dict['state_dict']
+    new_saved_state_dict = OrderedDict()
+    for k, v in saved_state_dict.items():
+        if 'backbone.' in k:
+            new_saved_state_dict[k.replace('backbone.', 'encoder.')] = v
+        elif 'decode_head.' in k:
+            new_saved_state_dict[k.replace('decode_head.', 'dede_head.')] = v
+        else:
+            new_saved_state_dict[k] = v
+    saved_state_dict = new_saved_state_dict
 
     msg = model.load_state_dict(saved_state_dict, strict=False)
     logging.info(msg)
@@ -263,18 +267,28 @@ def main():
         pass
 
     # init data loader
-    trainset = CSSrcDataSet(args.data_dir, args.data_list, max_iters=args.num_steps * args.batch_size,
-                            crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN,
-                            set=args.set)
+    if SOURCE_NAME == 'CS13':
+        trainset = CS13SrcDataSet(args.data_dir, args.data_list,
+                                  max_iters=args.num_steps * args.batch_size,
+                                  crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror,
+                                  mean=IMG_MEAN, set=args.set)
+    elif SOURCE_NAME == 'SP13':
+        trainset = synpass13DataSet(args.data_dir, args.data_list,
+                                    max_iters=args.num_steps * args.batch_size,
+                                    crop_size=input_size, scale=args.random_scale, mirror=args.random_mirror,
+                                    mean=IMG_MEAN, set=args.set)
+    else:
+        raise Exception
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                   pin_memory=True)
     trainloader_iter = enumerate(trainloader)
     # --- SSL_DIR
-    targetset = densepassDataSet(args.data_dir_target, args.data_list_target,
-                                 max_iters=args.num_steps * args.batch_size,
-                                 crop_size=input_size_target, scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
-                                 set=args.set,
-                                 ssl_dir=args.ssl_dir, trans=TARGET_TRANSFORM)
+    targetset = densepass13DataSet(args.data_dir_target, args.data_list_target,
+                                   max_iters=args.num_steps * args.batch_size,
+                                   crop_size=input_size_target, scale=False, mirror=args.random_mirror, mean=IMG_MEAN,
+                                   set=args.set,
+                                   ssl_dir=args.ssl_dir,
+                                   trans=TARGET_TRANSFORM)
     targetloader = data.DataLoader(targetset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                    pin_memory=True)
     targetloader_iter = enumerate(targetloader)
@@ -283,8 +297,8 @@ def main():
 
     # test_h, test_w = 400, 2048
     test_w, test_h = input_size_target_test
-    targettestset = densepassTestDataSet(args.data_dir_target, args.data_list_target_test, crop_size=(test_w, test_h),
-                                         mean=IMG_MEAN, scale=False, mirror=False, set='val')
+    targettestset = densepass13TestDataSet(args.data_dir_target, args.data_list_target_test, crop_size=(test_w, test_h),
+                                           mean=IMG_MEAN, scale=False, mirror=False, set='val')
     testloader = data.DataLoader(targettestset, batch_size=1, shuffle=False, pin_memory=True)
 
     # init optimizer
@@ -296,30 +310,9 @@ def main():
     optimizer_D.zero_grad()
 
     # init loss
-    weight = torch.ones(NUM_CLASSES)
-    weight[0] = 2.8149201869965
-    weight[1] = 6.9850029945374
-    weight[2] = 3.7890393733978
-    weight[3] = 9.9428062438965
-    weight[4] = 9.7702074050903
-    weight[5] = 9.5110931396484
-    weight[6] = 10.311357498169
-    weight[7] = 10.026463508606
-    weight[8] = 4.6323022842407
-    weight[9] = 9.5608062744141
-    weight[10] = 7.8698215484619
-    weight[11] = 9.5168733596802
-    weight[12] = 10.373730659485
-    weight[13] = 6.6616044044495
-    weight[14] = 10.260489463806
-    weight[15] = 10.287888526917
-    weight[16] = 10.289801597595
-    weight[17] = 10.405355453491
-    weight[18] = 10.138095855713
-    # weight[19] = 0
-    weight = weight.to(device)
+
     bce_loss = torch.nn.BCEWithLogitsLoss()
-    seg_loss = torch.nn.CrossEntropyLoss(ignore_index=255, weight=weight)
+    seg_loss = torch.nn.CrossEntropyLoss(ignore_index=255)
     seg_loss_target = torch.nn.CrossEntropyLoss(ignore_index=255)
     L1_loss = torch.nn.L1Loss(reduction='none')
 
@@ -459,7 +452,7 @@ def main():
                            osp.join(args.snapshot_dir, 'best.pth'))
                 torch.save(model_D.state_dict(),
                            osp.join(args.snapshot_dir, 'best_D.pth'))
-                with open(osp.join(args.snapshot_dir, 'best_miou.txt'), mode='w', encoding='utf-8') as f:
+                with open(osp.join(args.snapshot_dir, f'{TIME_STAMP}_best_miou.txt'), mode='w', encoding='utf-8') as f:
                     f.write(best_miou_str)
             unfreeze_model(model)
 
