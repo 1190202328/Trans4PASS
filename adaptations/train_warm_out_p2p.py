@@ -444,7 +444,7 @@ def main():
                            osp.join(args.snapshot_dir, 'best.pth'))
                 torch.save(model_D.state_dict(),
                            osp.join(args.snapshot_dir, 'best_D.pth'))
-                with open(osp.join(args.snapshot_dir, 'best_miou.txt'), mode='w', encoding='utf-8') as f:
+                with open(osp.join(args.snapshot_dir, f'{TIME_STAMP}_best_miou.txt'), mode='w', encoding='utf-8') as f:
                     f.write(best_miou_str)
             unfreeze_model(model)
 
