@@ -271,7 +271,7 @@ def main():
         target_trainset_temp = densepass13DataSet(args.data_dir_target, args.data_list_target,
                                                   crop_size=input_size_target,
                                                   set='train',
-                                                  ssl_dir=args.ssl_dir)
+                                                  ssl_dir=args.ssl_dir, trans=TARGET_TRANSFORM)
         target_trainloader_temp = data.DataLoader(target_trainset_temp, batch_size=1, shuffle=False)
         init_mem = init_memory(source_trainloader_temp, target_trainloader_temp, model, num_classes=args.num_classes,
                                save_path=init_memory_path)

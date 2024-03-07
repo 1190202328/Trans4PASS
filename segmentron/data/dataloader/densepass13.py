@@ -29,7 +29,7 @@ class DensePASS13Segmentation(SegmentationDataset):
         new_mask = np.zeros_like(mask)
         new_mask -= 1
         for value in values:
-            if value == 255 or value <= 1:
+            if value == 255 or value <= -1:
                 new_mask[mask == value] = -1
             else:
                 new_mask[mask == value] = self._key[value]
