@@ -56,7 +56,6 @@ SAVE_PRED_EVERY = 250
 DIR_NAME = 'my_{}2{}_{}_MPA_'.format(SOURCE_NAME, TARGET_NAME, MODEL)
 SNAPSHOT_DIR = '/nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/snapshots/' + DIR_NAME
 WEIGHT_DECAY = 0.0005
-# LOG_DIR = './log'
 LOG_DIR = SNAPSHOT_DIR
 
 LEARNING_RATE_D = 1e-4

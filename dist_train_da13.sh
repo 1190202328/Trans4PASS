@@ -36,8 +36,8 @@ if [ "${start_step}" -le 4 ]; then
     gen_pseudo_label_out_p2p.py --restore-from="${ssl_global_path}/${model_ckpt_name}" --save="${ssl_global_path}/${pseudo_labels_dir_name}"
 fi
 
-#if [ "${start_step}" -le 5 ]; then
-#  echo "step5: mpa"
-#  cd /nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/adaptations && CUDA_VISIBLE_DEVICES=0 /home/luban/apps/miniconda/miniconda/envs/torch1101/bin/python \
-#    train_mpa_out_p2p.py --source="$dataset_name" --snapshot-dir="$exp_name" --restore-from="${ssl_global_path}/${model_ckpt_name}" --ssl-dir="${ssl_global_path}/${pseudo_labels_dir_name}"
-#fi
+if [ "${start_step}" -le 5 ]; then
+  echo "step5: mpa"
+  cd /nfs/ofs-902-1/object-detection/jiangjing/experiments/Trans4PASS/adaptations && CUDA_VISIBLE_DEVICES=0 /home/luban/apps/miniconda/miniconda/envs/torch1101/bin/python \
+    train_mpa_out_p2p.py --source="$dataset_name" --snapshot-dir="$exp_name" --restore-from="${ssl_global_path}/${model_ckpt_name}" --ssl-dir="${ssl_global_path}/${pseudo_labels_dir_name}"
+fi
