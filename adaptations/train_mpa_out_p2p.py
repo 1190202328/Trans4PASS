@@ -266,7 +266,12 @@ def main():
 
     if not os.path.exists(init_memory_path):
         print(f'no memory calculated, calculating and saving to [{init_memory_path}]')
-        source_trainset_temp = CS13SrcDataSet(args.data_dir, args.data_list, crop_size=input_size, set='train')
+        if SOURCE_NAME == 'CS13':
+            source_trainset_temp = CS13SrcDataSet(args.data_dir, args.data_list, crop_size=input_size, set='train')
+        elif SOURCE_NAME == 'SP13':
+            source_trainset_temp = synpass13DataSet(args.data_dir, args.data_list, crop_size=input_size, set='train')
+        else:
+            raise Exception
         source_trainloader_temp = data.DataLoader(source_trainset_temp, batch_size=1, shuffle=False)
         target_trainset_temp = densepass13DataSet(args.data_dir_target, args.data_list_target,
                                                   crop_size=input_size_target,
